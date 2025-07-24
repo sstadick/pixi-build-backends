@@ -2199,6 +2199,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hashlink"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7382cf6263419f2d8df38c55d7da83da5c18aef87fc7a7fc1fb1e344edfe14c1"
+dependencies = [
+ "hashbrown 0.15.3",
+]
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2475,7 +2484,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.58.0",
+ "windows-core 0.61.0",
 ]
 
 [[package]]
@@ -2976,7 +2985,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if 1.0.0",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -3070,8 +3079,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2eb25a7ab146f4058d67a74dfea52e25c133c575f08ce5851da97d224e3ad8d"
 dependencies = [
  "doc-comment",
- "hashlink",
- "yaml-rust2",
+ "hashlink 0.9.1",
+ "yaml-rust2 0.9.0",
+]
+
+[[package]]
+name = "marked-yaml"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a76cf4e66a8ffccfce983161b0faafe61a5ef03fe875ef2e3deb897e4e915fa"
+dependencies = [
+ "doc-comment",
+ "hashlink 0.10.0",
+ "yaml-rust2 0.10.3",
 ]
 
 [[package]]
@@ -3810,6 +3830,7 @@ dependencies = [
  "rattler_conda_types",
  "rattler_package_streaming",
  "rattler_virtual_packages",
+ "recipe-stage0",
  "reqwest",
  "reqwest-middleware",
  "serde",
@@ -3817,14 +3838,15 @@ dependencies = [
  "serde_yaml",
  "tempfile",
  "tokio",
- "toml_edit",
+ "toml 0.7.8",
+ "toml_edit 0.22.26",
  "tracing-subscriber",
  "url",
 ]
 
 [[package]]
 name = "pixi-build-cmake"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -3839,6 +3861,7 @@ dependencies = [
  "rattler-build",
  "rattler_conda_types",
  "rattler_package_streaming",
+ "recipe-stage0",
  "serde",
  "serde_json",
  "tempfile",
@@ -3871,7 +3894,7 @@ dependencies = [
 
 [[package]]
 name = "pixi-build-python"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -3901,6 +3924,7 @@ dependencies = [
  "rattler_conda_types",
  "rattler_package_streaming",
  "rattler_virtual_packages",
+ "recipe-stage0",
  "reqwest",
  "reqwest-middleware",
  "serde",
@@ -3908,17 +3932,19 @@ dependencies = [
  "serde_yaml",
  "tempfile",
  "tokio",
- "toml_edit",
+ "toml_edit 0.22.26",
  "tracing-subscriber",
  "url",
 ]
 
 [[package]]
 name = "pixi-build-rattler-build"
-version = "0.1.14"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "fs-err",
+ "indexmap 2.9.0",
+ "itertools 0.14.0",
  "miette",
  "pathdiff",
  "pixi-build-backend",
@@ -3935,12 +3961,13 @@ dependencies = [
 
 [[package]]
 name = "pixi-build-rust"
-version = "0.1.14"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "chrono",
  "indexmap 2.9.0",
  "insta",
+ "marked-yaml 0.8.0",
  "miette",
  "minijinja",
  "pixi-build-backend",
@@ -3950,9 +3977,12 @@ dependencies = [
  "rattler-build",
  "rattler_conda_types",
  "rattler_package_streaming",
+ "recipe-stage0",
  "rstest",
  "serde",
  "serde_json",
+ "serde_yaml",
+ "temp-env",
  "tempfile",
  "tokio",
 ]
@@ -4006,7 +4036,7 @@ dependencies = [
  "serde_ignored",
  "serde_json",
  "thiserror 2.0.12",
- "toml_edit",
+ "toml_edit 0.22.26",
  "tracing",
  "url",
 ]
@@ -4077,7 +4107,7 @@ dependencies = [
  "strum",
  "thiserror 2.0.12",
  "toml-span",
- "toml_edit",
+ "toml_edit 0.22.26",
  "tracing",
  "url",
 ]
@@ -4097,7 +4127,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.12",
  "toml-span",
- "toml_edit",
+ "toml_edit 0.22.26",
  "tracing",
  "url",
 ]
@@ -4119,7 +4149,7 @@ dependencies = [
  "serde_with",
  "thiserror 2.0.12",
  "toml-span",
- "toml_edit",
+ "toml_edit 0.22.26",
  "tracing",
  "typed-path",
  "url",
@@ -4257,7 +4287,7 @@ version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edce586971a4dfaa28950c6f18ed55e0406c1ab88bbce2c6f6293a7aaba73d35"
 dependencies = [
- "toml_edit",
+ "toml_edit 0.22.26",
 ]
 
 [[package]]
@@ -4295,7 +4325,7 @@ dependencies = [
  "pep508_rs",
  "serde",
  "thiserror 1.0.69",
- "toml",
+ "toml 0.8.22",
 ]
 
 [[package]]
@@ -4536,7 +4566,7 @@ dependencies = [
  "indicatif",
  "itertools 0.14.0",
  "lazy_static",
- "marked-yaml",
+ "marked-yaml 0.7.2",
  "memchr",
  "memmap2",
  "miette",
@@ -4583,7 +4613,7 @@ dependencies = [
  "thiserror 2.0.12",
  "tokio",
  "tokio-util 0.7.15",
- "toml",
+ "toml 0.8.22",
  "tracing",
  "tracing-core",
  "tracing-subscriber",
@@ -4981,6 +5011,25 @@ checksum = "1465873a3dfdaa8ae7cb14b4383657caab0b3e8a0aa9ae8e04b044854c8dfce2"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
+]
+
+[[package]]
+name = "recipe-stage0"
+version = "0.1.0"
+dependencies = [
+ "either",
+ "hashlink 0.10.0",
+ "indexmap 2.9.0",
+ "insta",
+ "marked-yaml 0.8.0",
+ "miette",
+ "pixi_build_types",
+ "rattler-build",
+ "rattler_conda_types",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "url",
 ]
 
 [[package]]
@@ -6130,6 +6179,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "temp-env"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96374855068f47402c3121c6eed88d29cb1de8f3ab27090e273e420bdabcf050"
+dependencies = [
+ "parking_lot 0.12.4",
+]
+
+[[package]]
 name = "tempfile"
 version = "3.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6367,6 +6425,18 @@ dependencies = [
 
 [[package]]
 name = "toml"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd79e69d3b627db300ff956027cc6c3798cef26d22526befdfcd12feeb6d2257"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit 0.19.15",
+]
+
+[[package]]
+name = "toml"
 version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05ae329d1f08c4d17a59bed7ff5b5a769d062e64a62d34a3261b219e62cd5aae"
@@ -6374,7 +6444,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "toml_edit",
+ "toml_edit 0.22.26",
 ]
 
 [[package]]
@@ -6398,6 +6468,19 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
+version = "0.19.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
+dependencies = [
+ "indexmap 2.9.0",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow 0.5.40",
+]
+
+[[package]]
+name = "toml_edit"
 version = "0.22.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "310068873db2c5b3e7659d2cc35d21855dbafa50d1ce336397c666e3cb08137e"
@@ -6407,7 +6490,7 @@ dependencies = [
  "serde_spanned",
  "toml_datetime",
  "toml_write",
- "winnow",
+ "winnow 0.7.8",
 ]
 
 [[package]]
@@ -7490,6 +7573,15 @@ checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
 
 [[package]]
 name = "winnow"
+version = "0.5.40"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "winnow"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e27d6ad3dac991091e4d35de9ba2d2d00647c5d0fc26c5496dee55984ae111b"
@@ -7585,7 +7677,18 @@ checksum = "2a1a1c0bc9823338a3bdf8c61f994f23ac004c6fa32c08cd152984499b445e8d"
 dependencies = [
  "arraydeque",
  "encoding_rs",
- "hashlink",
+ "hashlink 0.9.1",
+]
+
+[[package]]
+name = "yaml-rust2"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ce2a4ff45552406d02501cea6c18d8a7e50228e7736a872951fe2fe75c91be7"
+dependencies = [
+ "arraydeque",
+ "encoding_rs",
+ "hashlink 0.10.0",
 ]
 
 [[package]]

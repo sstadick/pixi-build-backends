@@ -6,6 +6,7 @@ on:
 
 name: Testsuite
 
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -20,12 +21,13 @@ jobs:
   build-binary-linux-x86_64:
     name: Build Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - uses: prefix-dev/setup-pixi@main
         with:
           cache: ${{ github.ref == 'refs/heads/main' }}
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
+      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2
         with:
           workspaces: ". -> target/pixi"
           key: ${{ hashFiles('pixi.lock') }}
@@ -45,6 +47,7 @@ jobs:
   build-binary-windows-x86_64:
     name: Build Windows
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - name: Create Dev Drive
@@ -56,7 +59,7 @@ jobs:
         with:
           manifest-path: ${{ env.PIXI_WORKSPACE }}/pixi.toml
           cache: ${{ github.ref == 'refs/heads/main' }}
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
+      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2
         with:
           workspaces: ". -> ${{ env.PIXI_WORKSPACE }}/target/pixi"
           key: ${{ hashFiles('pixi.lock') }}
@@ -77,12 +80,13 @@ jobs:
   build-binary-macos-aarch64:
     name: Build macOS
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - uses: prefix-dev/setup-pixi@main
         with:
           cache: ${{ github.ref == 'refs/heads/main' }}
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
+      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2
         with:
           workspaces: ". -> target/pixi"
           key: ${{ hashFiles('pixi.lock') }}
@@ -100,10 +104,10 @@ jobs:
           retention-days: 60
 
   test-linux-x86_64:
-    timeout-minutes: 10
     name: Test Linux x86_64
     runs-on: ubuntu-latest
     needs: build-binary-linux-x86_64
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
@@ -135,10 +139,10 @@ jobs:
           BUILD_BACKENDS_BIN_DIR: ${{ github.workspace }}/artifacts
 
   test-windows-x86_64:
-    timeout-minutes: 10
     name: Test Windows x86_64
     runs-on: windows-latest
     needs: build-binary-windows-x86_64
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
@@ -177,10 +181,10 @@ jobs:
           BUILD_BACKENDS_BIN_DIR: ${{ env.PIXI_WORKSPACE }}/artifacts
 
   test-macos-aarch64:
-    timeout-minutes: 10
     name: Test macOS aarch64
     runs-on: macos-14
     needs: build-binary-macos-aarch64
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:

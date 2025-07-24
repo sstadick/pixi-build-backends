@@ -1,6 +1,10 @@
 use indexmap::IndexMap;
+use pixi_build_backend::generated_recipe::BackendConfig;
 use serde::Deserialize;
-use std::{convert::identity, path::PathBuf};
+use std::{
+    convert::identity,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -14,12 +18,21 @@ pub struct PythonBackendConfig {
     pub env: IndexMap<String, String>,
     /// If set, internal state will be logged as files in that directory
     pub debug_dir: Option<PathBuf>,
+    /// Extra input globs to include in addition to the default ones
+    #[serde(default)]
+    pub extra_input_globs: Vec<String>,
 }
 
 impl PythonBackendConfig {
     /// Whether to build a noarch package or a platform-specific package.
     pub fn noarch(&self) -> bool {
         self.noarch.is_none_or(identity)
+    }
+}
+
+impl BackendConfig for PythonBackendConfig {
+    fn debug_dir(&self) -> Option<&Path> {
+        self.debug_dir.as_deref()
     }
 }
 
