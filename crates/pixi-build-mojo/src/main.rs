@@ -1,0 +1,307 @@
+mod build_script;
+mod config;
+
+use std::{collections::BTreeMap, path::Path};
+
+use build_script::{BuildPlatform, BuildScriptContext};
+use config::MojoBackendConfig;
+use miette::{Error, IntoDiagnostic};
+use pixi_build_backend::{
+    generated_recipe::{GenerateRecipe, GeneratedRecipe, PythonParams},
+    intermediate_backend::IntermediateBackendInstantiator,
+};
+use rattler_build::{recipe::variable::Variable, NormalizedKey};
+use rattler_conda_types::{PackageName, Platform};
+use recipe_stage0::recipe::Script;
+
+#[derive(Default, Clone)]
+pub struct MojoGenerator {}
+
+impl GenerateRecipe for MojoGenerator {
+    type Config = MojoBackendConfig;
+
+    fn generate_recipe(
+        &self,
+        model: &pixi_build_types::ProjectModelV1,
+        config: &Self::Config,
+        manifest_root: std::path::PathBuf,
+        host_platform: rattler_conda_types::Platform,
+        _python_params: Option<PythonParams>,
+    ) -> miette::Result<GeneratedRecipe> {
+        let mut generated_recipe =
+            GeneratedRecipe::from_model(model.clone(), manifest_root.clone());
+
+        // we need to add compilers
+        let requirements = &mut generated_recipe.recipe.requirements;
+        let resolved_requirements = requirements.resolve(Some(&host_platform));
+
+        // Ensure the compiler function is added to the build requirements
+        // only if a specific compiler is not already present.
+        let mojo_compiler_pkg = "max".to_string();
+
+        let build_platform = Platform::current();
+
+        if !resolved_requirements
+            .build
+            .contains_key(&PackageName::new_unchecked(&mojo_compiler_pkg))
+        {
+            requirements
+                .build
+                .push(mojo_compiler_pkg.parse().into_diagnostic()?);
+        }
+
+        // Check if the host platform has a host python dependency
+        // TODO: surely this will be needed for compiling bindings or something? or maybe those
+        // will be handled by uv?
+        let has_host_python = resolved_requirements.contains(&PackageName::new_unchecked("python"));
+
+        let build_script = BuildScriptContext {
+            build_platform: if build_platform.is_windows() {
+                return Err(Error::msg(
+                    "Windows is not a supported build platform for mojo",
+                ));
+            } else {
+                BuildPlatform::Unix
+            },
+            source_dir: manifest_root.display().to_string(),
+            extra_args: config.extra_args.clone(),
+            has_host_python,
+        }
+        .render();
+
+        generated_recipe.recipe.build.script = Script {
+            content: build_script,
+            env: config.env.clone(),
+            ..Default::default()
+        };
+
+        Ok(generated_recipe)
+    }
+
+    fn extract_input_globs_from_build(
+        _config: &Self::Config,
+        _workdir: impl AsRef<Path>,
+        _editable: bool,
+    ) -> Vec<String> {
+        [
+            // Source files
+            "**/*.{mojo,🔥}",
+        ]
+        .iter()
+        .map(|s: &&str| s.to_string())
+        // May want a special area for defining includes?
+        .collect()
+    }
+
+    fn default_variants(&self, _host_platform: Platform) -> BTreeMap<NormalizedKey, Vec<Variable>> {
+        BTreeMap::new()
+    }
+}
+
+#[tokio::main]
+pub async fn main() {
+    if let Err(err) =
+        pixi_build_backend::cli::main(IntermediateBackendInstantiator::<MojoGenerator>::new).await
+    {
+        eprintln!("{err:?}");
+        std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use indexmap::IndexMap;
+    use pixi_build_types::ProjectModelV1;
+
+    use super::*;
+
+    #[test]
+    fn test_input_globs_includes_extra_globs() {
+        let config = MojoBackendConfig {
+            ..Default::default()
+        };
+
+        let result = MojoGenerator::extract_input_globs_from_build(&config, PathBuf::new(), false);
+
+        insta::assert_debug_snapshot!(result);
+    }
+
+    #[macro_export]
+    macro_rules! project_fixture {
+        ($($json:tt)+) => {
+            serde_json::from_value::<ProjectModelV1>(
+                serde_json::json!($($json)+)
+            ).expect("Failed to create TestProjectModel from JSON fixture.")
+        };
+    }
+
+    #[test]
+    fn test_max_is_in_build_requirements() {
+        let project_model = project_fixture!({
+            "name": "foobar",
+            "version": "0.1.0",
+            "targets": {
+                "defaultTarget": {
+                    "runDependencies": {
+                        "boltons": {
+                            "binary": {
+                                "version": "*"
+                            }
+                        }
+                    }
+                },
+            }
+        });
+
+        let generated_recipe = MojoGenerator::default()
+            .generate_recipe(
+                &project_model,
+                &MojoBackendConfig::default(),
+                PathBuf::from("."),
+                Platform::Linux64,
+                None,
+            )
+            .expect("Failed to generate recipe");
+
+        insta::assert_yaml_snapshot!(generated_recipe.recipe, {
+        ".source[0].path" => "[ ... path ... ]",
+        ".build.script" => "[ ... script ... ]",
+        });
+    }
+
+    #[test]
+    fn test_env_vars_are_set() {
+        let project_model = project_fixture!({
+            "name": "foobar",
+            "version": "0.1.0",
+            "targets": {
+                "defaultTarget": {
+                    "runDependencies": {
+                        "boltons": {
+                            "binary": {
+                                "version": "*"
+                            }
+                        }
+                    }
+                },
+            }
+        });
+
+        let env = IndexMap::from([("foo".to_string(), "bar".to_string())]);
+
+        let generated_recipe = MojoGenerator::default()
+            .generate_recipe(
+                &project_model,
+                &MojoBackendConfig {
+                    env: env.clone(),
+                    ..Default::default()
+                },
+                PathBuf::from("."),
+                Platform::Linux64,
+                None,
+            )
+            .expect("Failed to generate recipe");
+
+        insta::assert_yaml_snapshot!(generated_recipe.recipe.build.script,
+        {
+            ".content" => "[ ... script ... ]",
+        });
+    }
+
+    #[test]
+    fn test_has_python_is_set_in_build_script() {
+        let project_model = project_fixture!({
+            "name": "foobar",
+            "version": "0.1.0",
+            "targets": {
+                "defaultTarget": {
+                    "runDependencies": {
+                        "boltons": {
+                            "binary": {
+                                "version": "*"
+                            }
+                        }
+                    },
+                    "hostDependencies": {
+                        "python": {
+                            "binary": {
+                                "version": "*"
+                            }
+                        }
+                    }
+                },
+            }
+        });
+
+        let generated_recipe = MojoGenerator::default()
+            .generate_recipe(
+                &project_model,
+                &MojoBackendConfig::default(),
+                PathBuf::from("."),
+                Platform::Linux64,
+                None,
+            )
+            .expect("Failed to generate recipe");
+
+        // we want to check that
+        // -DPython_EXECUTABLE=$PYTHON is set in the build script
+        insta::assert_yaml_snapshot!(generated_recipe.recipe.build,
+
+            {
+            ".script.content" => insta::dynamic_redaction(|value, _path| {
+                dbg!(&value);
+                // assert that the value looks like a uuid here
+                assert!(value
+                    .as_slice()
+                    .unwrap()
+                    .iter()
+                    .any(|c| c.as_str().unwrap().contains("-DPython_EXECUTABLE"))
+                );
+                "[content]"
+            })
+        });
+    }
+
+    #[test]
+    fn test_max_is_not_added_if_max_is_already_present() {
+        let project_model = project_fixture!({
+            "name": "foobar",
+            "version": "0.1.0",
+            "targets": {
+                "defaultTarget": {
+                    "runDependencies": {
+                        "boltons": {
+                            "binary": {
+                                "version": "*"
+                            }
+                        }
+                    },
+                    "buildDependencies": {
+                        "max": {
+                            "binary": {
+                                "version": "*"
+                            }
+                        }
+                    }
+                },
+            }
+        });
+
+        let generated_recipe = MojoGenerator::default()
+            .generate_recipe(
+                &project_model,
+                &MojoBackendConfig::default(),
+                PathBuf::from("."),
+                Platform::Linux64,
+                None,
+            )
+            .expect("Failed to generate recipe");
+
+        insta::assert_yaml_snapshot!(generated_recipe.recipe, {
+        ".source[0].path" => "[ ... path ... ]",
+        ".build.script" => "[ ... script ... ]",
+        });
+    }
+}

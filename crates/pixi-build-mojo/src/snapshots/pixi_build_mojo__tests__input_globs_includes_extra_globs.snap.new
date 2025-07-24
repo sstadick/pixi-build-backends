@@ -1,0 +1,8 @@
+---
+source: crates/pixi-build-mojo/src/main.rs
+assertion_line: 128
+expression: result
+---
+[
+    "**/*.{mojo,🔥}",
+]
