@@ -49,24 +49,34 @@ fn default_dist_dir() -> PathBuf {
     PathBuf::from("target")
 }
 
+/// Config object for a Mojo binary.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MojoBinConfig {
+    /// Name of the binary.
     pub name: String,
+    /// Path to file that has the `main` method.
     pub path: String,
+    /// Extra args to pass to the compiler.
     #[serde(default, rename(serialize = "extra_args"))]
     pub extra_args: Option<Vec<String>>,
+    /// Env vars to set.
     #[serde(default)]
     pub env: IndexMap<String, String>,
 }
 
+/// Config object for a Mojo package.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MojoPkgConfig {
+    /// Name to give the mojo package (.mojopkg suffix will be added).
     pub name: String,
+    /// Path to the directory that constitutes the package.
     pub path: String,
+    /// Extra args to pass to the compiler.
     #[serde(default, rename(serialize = "extra_args"))]
     pub extra_args: Option<Vec<String>>,
+    /// Env vars to set.
     #[serde(default)]
     pub env: IndexMap<String, String>,
 }

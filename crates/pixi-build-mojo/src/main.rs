@@ -3,9 +3,9 @@ mod config;
 
 use std::{collections::BTreeMap, path::Path};
 
-use build_script::{BuildPlatform, BuildScriptContext};
+use build_script::BuildScriptContext;
 use config::MojoBackendConfig;
-use miette::{Error, IntoDiagnostic};
+use miette::IntoDiagnostic;
 use pixi_build_backend::{
     generated_recipe::{GenerateRecipe, GeneratedRecipe, PythonParams},
     intermediate_backend::IntermediateBackendInstantiator,
@@ -39,8 +39,6 @@ impl GenerateRecipe for MojoGenerator {
         // only if a specific compiler is not already present.
         let mojo_compiler_pkg = "max".to_string();
 
-        let build_platform = Platform::current();
-
         if !resolved_requirements
             .build
             .contains_key(&PackageName::new_unchecked(&mojo_compiler_pkg))
@@ -55,16 +53,7 @@ impl GenerateRecipe for MojoGenerator {
         // will be handled by uv?
         let has_host_python = resolved_requirements.contains(&PackageName::new_unchecked("python"));
 
-        // TODO: have different build scripts based on configuration?
-
         let build_script = BuildScriptContext {
-            build_platform: if build_platform.is_windows() {
-                return Err(Error::msg(
-                    "Windows is not a supported build platform for mojo",
-                ));
-            } else {
-                BuildPlatform::Unix
-            },
             source_dir: manifest_root.display().to_string(),
             dist: config.dist_dir.display().to_string(),
             bins: config.bins.clone(),
@@ -89,11 +78,10 @@ impl GenerateRecipe for MojoGenerator {
     ) -> Vec<String> {
         [
             // Source files
-            "**/*.mojo",
+            "**/*.mojo,*.🔥",
         ]
         .iter()
         .map(|s: &&str| s.to_string())
-        // May want a special area for defining includes?
         .collect()
     }
 
