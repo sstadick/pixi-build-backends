@@ -13,6 +13,7 @@ pub struct MojoBackendConfig {
     /// Environment Variables
     #[serde(default)]
     pub env: IndexMap<String, String>,
+
     pub debug_dir: Option<PathBuf>,
 }
 
