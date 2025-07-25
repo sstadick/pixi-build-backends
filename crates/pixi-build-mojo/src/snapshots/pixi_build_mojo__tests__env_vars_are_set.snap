@@ -1,6 +1,5 @@
 ---
 source: crates/pixi-build-mojo/src/main.rs
-assertion_line: 207
 expression: generated_recipe.recipe.build.script
 ---
 content: "[ ... script ... ]"

@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use pixi_build_backend::generated_recipe::BackendConfig;
@@ -13,11 +13,12 @@ pub struct MojoBackendConfig {
     /// Environment Variables
     #[serde(default)]
     pub env: IndexMap<String, String>,
+    pub debug_dir: Option<PathBuf>,
 }
 
 impl BackendConfig for MojoBackendConfig {
     fn debug_dir(&self) -> Option<&Path> {
-        None
+        self.debug_dir.as_deref()
     }
 }
 
