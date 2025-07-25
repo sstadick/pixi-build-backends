@@ -4,8 +4,6 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct BuildScriptContext {
-    /// The platform that the build is taking place on.
-    pub build_platform: BuildPlatform,
     /// The directory where the source code is located, the manifest root.
     pub source_dir: String,
     /// The directory name to place output artifacts, will be created in `source_dir`.
@@ -20,12 +18,6 @@ pub struct BuildScriptContext {
     /// This is used to determine if the build script
     /// should include Python-related logic.
     pub has_host_python: bool,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum BuildPlatform {
-    Unix,
 }
 
 impl BuildScriptContext {
