@@ -1,18 +1,28 @@
+use super::config::{MojoBinConfig, MojoPkgConfig};
 use minijinja::Environment;
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct BuildScriptContext {
+    /// The platform that the build is taking place on.
     pub build_platform: BuildPlatform,
+    /// The directory where the source code is located, the manifest root.
     pub source_dir: String,
-    pub extra_args: Vec<String>,
+    /// The directory name to place output artifacts, will be created in `source_dir`.
+    pub dist: String,
+    /// Any executable artifacts to create.
+    pub bins: Option<Vec<MojoBinConfig>>,
+    /// Any packages to create.
+    pub pkg: Option<MojoPkgConfig>,
+
+    /// Not currenlty used
     /// The package has a host dependency on Python.
     /// This is used to determine if the build script
     /// should include Python-related logic.
     pub has_host_python: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BuildPlatform {
     Unix,

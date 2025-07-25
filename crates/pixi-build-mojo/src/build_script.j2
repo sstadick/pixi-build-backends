@@ -4,10 +4,21 @@
 {% endmacro -%}
 
 {# - Set up common variables -#}
-{%- set build_dir = "build" -%}
-{%- set source_dir = env("SRC_DIR") -%}
 {%- set library_prefix =  "%LIBRARY_PREFIX%" if build_platform == "windows" else "$PREFIX" -%}
 
 mojo --version
+mkdir -p {{ source_dir }}/{{ dist }}
 
-mojo  {{ extra_args | join(" ") }} -o {{ library_prefix }}/main
+{#- Build any binaries -#}
+{% if bins %}
+	{% for bin in bins %}
+		mojo build {{ bin.extra_args | join(" ")  }} {{ bin.path }} -o {{ library_prefix }}/{{ bin.name }}
+		cp {{ library_prefix }}/{{ bin.name }} {{ source_dir }}/{{ dist }}
+	{% endfor %}
+{% endif %}
+
+{#- Build pkg -#}
+{% if pkg %}
+	mojo package {{ pkg.extra_args | join(" ") }} {{ pkg.path }} -o {{ library_prefix }}/{{ pkg.name}}.mojopkg
+	cp {{ library_prefix }}/{{ pkg.name }}.mojopkg {{ source_dir }}/{{ dist }}
+{% endif %}

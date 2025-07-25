@@ -49,12 +49,13 @@ impl GenerateRecipe for MojoGenerator {
                 .build
                 .push(mojo_compiler_pkg.parse().into_diagnostic()?);
         }
-        eprintln!("resolved compiler");
 
         // Check if the host platform has a host python dependency
         // TODO: surely this will be needed for compiling bindings or something? or maybe those
         // will be handled by uv?
         let has_host_python = resolved_requirements.contains(&PackageName::new_unchecked("python"));
+
+        // TODO: have different build scripts based on configuration?
 
         let build_script = BuildScriptContext {
             build_platform: if build_platform.is_windows() {
@@ -65,18 +66,18 @@ impl GenerateRecipe for MojoGenerator {
                 BuildPlatform::Unix
             },
             source_dir: manifest_root.display().to_string(),
-            extra_args: config.extra_args.clone(),
+            dist: config.dist_dir.display().to_string(),
+            bins: config.bins.clone(),
+            pkg: config.pkg.clone(),
             has_host_python,
         }
         .render();
-        eprintln!("rendered build script");
 
         generated_recipe.recipe.build.script = Script {
             content: build_script,
             env: config.env.clone(),
             ..Default::default()
         };
-        eprintln!("Recipe script created");
 
         Ok(generated_recipe)
     }
