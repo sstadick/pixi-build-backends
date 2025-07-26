@@ -7,18 +7,25 @@
 {%- set library_prefix =  "%LIBRARY_PREFIX%" if build_platform == "windows" else "$PREFIX" -%}
 
 mojo --version
-mkdir -p {{ source_dir }}/{{ dist }}
+
+{% if dist %}
+	mkdir -p {{ source_dir }}/{{ dist }}
+{% endif %}
 
 {#- Build any binaries -#}
 {% if bins %}
 	{% for bin in bins %}
-		mojo build {{ bin.extra_args | join(" ")  }} {{ bin.path }} -o {{ library_prefix }}/{{ bin.name }}
-		cp {{ library_prefix }}/{{ bin.name }} {{ source_dir }}/{{ dist }}
+		mojo build {{ bin.extra_args | join(" ")  }} {{ bin.path }} -o {{ library_prefix }}/bin/{{ bin.name }}
+		{% if dist %}
+			cp {{ library_prefix }}/bin/{{ bin.name }} {{ source_dir }}/{{ dist }}
+		{% endif %}
 	{% endfor %}
 {% endif %}
 
 {#- Build pkg -#}
 {% if pkg %}
-	mojo package {{ pkg.extra_args | join(" ") }} {{ pkg.path }} -o {{ library_prefix }}/{{ pkg.name}}.mojopkg
-	cp {{ library_prefix }}/{{ pkg.name }}.mojopkg {{ source_dir }}/{{ dist }}
+	mojo package {{ pkg.extra_args | join(" ") }} {{ pkg.path }} -o {{ library_prefix }}/lib/mojo/{{ pkg.name}}.mojopkg
+	{% if dist %}
+		cp {{ library_prefix }}/lib/mojo/{{ pkg.name }}.mojopkg {{ source_dir }}/{{ dist }}
+	{% endif %}
 {% endif %}
