@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use pixi_build_backend::generated_recipe::BackendConfig;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MojoBackendConfig {
     /// Environment Variables
@@ -14,8 +14,7 @@ pub struct MojoBackendConfig {
     /// Directory that will be created to place output artifacts.
     ///
     /// This is releative to the manifest dir.
-    #[serde(default = "default_dist_dir")]
-    pub dist_dir: PathBuf,
+    pub dist_dir: Option<PathBuf>,
 
     /// Dir that can be specified for outputting pixi debug state.
     pub debug_dir: Option<PathBuf>,
@@ -31,22 +30,6 @@ impl BackendConfig for MojoBackendConfig {
     fn debug_dir(&self) -> Option<&Path> {
         self.debug_dir.as_deref()
     }
-}
-
-impl Default for MojoBackendConfig {
-    fn default() -> Self {
-        Self {
-            env: Default::default(),
-            dist_dir: default_dist_dir(),
-            debug_dir: Default::default(),
-            bins: Default::default(),
-            pkg: Default::default(),
-        }
-    }
-}
-
-fn default_dist_dir() -> PathBuf {
-    PathBuf::from("target")
 }
 
 /// Config object for a Mojo binary.

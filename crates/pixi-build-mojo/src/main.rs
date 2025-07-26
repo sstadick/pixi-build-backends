@@ -55,7 +55,7 @@ impl GenerateRecipe for MojoGenerator {
 
         let build_script = BuildScriptContext {
             source_dir: manifest_root.display().to_string(),
-            dist: config.dist_dir.display().to_string(),
+            dist: config.dist_dir.clone().map(|d| d.display().to_string()),
             bins: config.bins.clone(),
             pkg: config.pkg.clone(),
             has_host_python,
@@ -68,6 +68,9 @@ impl GenerateRecipe for MojoGenerator {
             ..Default::default()
         };
 
+        // How do I set globs on the build??
+        generated_recipe.build_input_globs = Self::globs();
+
         Ok(generated_recipe)
     }
 
@@ -76,17 +79,26 @@ impl GenerateRecipe for MojoGenerator {
         _workdir: impl AsRef<Path>,
         _editable: bool,
     ) -> Vec<String> {
-        [
-            // Source files
-            "**/*.mojo,*.🔥",
-        ]
-        .iter()
-        .map(|s: &&str| s.to_string())
-        .collect()
+        Self::globs()
     }
 
     fn default_variants(&self, _host_platform: Platform) -> BTreeMap<NormalizedKey, Vec<Variable>> {
         BTreeMap::new()
+    }
+}
+
+impl MojoGenerator {
+    fn globs() -> Vec<String> {
+        [
+            // Source files
+            "**/*.mojo,*.🔥",
+            "**/pixi.toml",
+            "**/pixi.lock",
+            "**/recipe.yaml",
+        ]
+        .iter()
+        .map(|s: &&str| s.to_string())
+        .collect()
     }
 }
 
