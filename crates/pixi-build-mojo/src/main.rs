@@ -123,11 +123,14 @@ mod tests {
     use indexmap::IndexMap;
     use pixi_build_types::ProjectModelV1;
 
+    use crate::config::{MojoBinConfig, MojoPkgConfig};
+
     use super::*;
 
     #[test]
     fn test_input_globs_includes_extra_globs() {
         let config = MojoBackendConfig {
+            extra_input_globs: vec![String::from("**/.c")],
             ..Default::default()
         };
 
@@ -143,6 +146,94 @@ mod tests {
                 serde_json::json!($($json)+)
             ).expect("Failed to create TestProjectModel from JSON fixture.")
         };
+    }
+
+    #[test]
+    fn test_mojo_bin_is_set() {
+        let project_model = project_fixture!({
+            "name": "foobar",
+            "version": "0.1.0",
+            "targets": {
+                "defaultTarget": {
+                    "runDependencies": {
+                        "boltons": {
+                            "binary": {
+                                "version": "*"
+                            }
+                        }
+                    }
+                },
+            }
+        });
+
+        let generated_recipe = MojoGenerator::default()
+            .generate_recipe(
+                &project_model,
+                &MojoBackendConfig {
+                    bins: Some(vec![MojoBinConfig {
+                        name: String::from("example"),
+                        path: String::from("./main.mojo"),
+                        extra_args: Some(vec![String::from("-I"), String::from(".")]),
+                        env: IndexMap::new(),
+                    }]),
+                    ..Default::default()
+                },
+                PathBuf::from("."),
+                Platform::Linux64,
+                None,
+            )
+            .expect("Failed to generate recipe");
+
+        insta::assert_yaml_snapshot!(generated_recipe.recipe, {
+        ".source[0].path" => "[ ... path ... ]",
+        });
+    }
+
+    #[test]
+    fn test_mojo_pkg_is_set() {
+        let project_model = project_fixture!({
+            "name": "foobar",
+            "version": "0.1.0",
+            "targets": {
+                "defaultTarget": {
+                    "runDependencies": {
+                        "boltons": {
+                            "binary": {
+                                "version": "*"
+                            }
+                        }
+                    }
+                },
+            }
+        });
+
+        let generated_recipe = MojoGenerator::default()
+            .generate_recipe(
+                &project_model,
+                &MojoBackendConfig {
+                    bins: Some(vec![MojoBinConfig {
+                        name: String::from("example"),
+                        path: String::from("./main.mojo"),
+                        extra_args: Some(vec![String::from("-i"), String::from(".")]),
+                        env: IndexMap::new(),
+                    }]),
+                    pkg: Some(MojoPkgConfig {
+                        name: String::from("lib"),
+                        path: String::from("mylib"),
+                        extra_args: Some(vec![String::from("-i"), String::from(".")]),
+                        env: IndexMap::new(),
+                    }),
+                    ..Default::default()
+                },
+                PathBuf::from("."),
+                Platform::Linux64,
+                None,
+            )
+            .expect("Failed to generate recipe");
+
+        insta::assert_yaml_snapshot!(generated_recipe.recipe, {
+        ".source[0].path" => "[ ... path ... ]",
+        });
     }
 
     #[test]

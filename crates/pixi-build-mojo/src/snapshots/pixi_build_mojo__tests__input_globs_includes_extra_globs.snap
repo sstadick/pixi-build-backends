@@ -2,6 +2,10 @@
 source: crates/pixi-build-mojo/src/main.rs
 expression: result
 ---
-[
+{
     "**/*.{mojo,🔥}",
-]
+    "**/.c",
+    "**/pixi.lock",
+    "**/pixi.toml",
+    "**/recipe.yaml",
+}
