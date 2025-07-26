@@ -27,7 +27,7 @@ install-pixi-backends = { depends-on = [
   "install-pixi-build-cmake",
   "install-pixi-build-rattler-build",
   "install-pixi-build-rust",
-  #"install-pixi-build-mojo",
+  "install-pixi-build-mojo",
 ] }
 
 
