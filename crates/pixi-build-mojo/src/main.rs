@@ -1,7 +1,10 @@
 mod build_script;
 mod config;
 
-use std::{collections::BTreeMap, path::Path};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
+};
 
 use build_script::BuildScriptContext;
 use config::MojoBackendConfig;
@@ -33,7 +36,7 @@ impl GenerateRecipe for MojoGenerator {
 
         // we need to add compilers
         let requirements = &mut generated_recipe.recipe.requirements;
-        let resolved_requirements = requirements.resolve(Some(&host_platform));
+        let resolved_requirements = requirements.resolve(Some(host_platform));
 
         // Ensure the compiler function is added to the build requirements
         // only if a specific compiler is not already present.
@@ -69,7 +72,7 @@ impl GenerateRecipe for MojoGenerator {
         };
 
         // How do I set globs on the build??
-        generated_recipe.build_input_globs = Self::globs().collect::<Vec<_>>();
+        generated_recipe.build_input_globs = Self::globs().collect::<BTreeSet<_>>();
 
         Ok(generated_recipe)
     }
@@ -78,10 +81,10 @@ impl GenerateRecipe for MojoGenerator {
         config: &Self::Config,
         _workdir: impl AsRef<Path>,
         _editable: bool,
-    ) -> Vec<String> {
+    ) -> BTreeSet<String> {
         Self::globs()
             .chain(config.extra_input_globs.clone())
-            .collect::<Vec<_>>()
+            .collect()
     }
 
     fn default_variants(&self, _host_platform: Platform) -> BTreeMap<NormalizedKey, Vec<Variable>> {
