@@ -19,6 +19,10 @@ pub struct MojoBackendConfig {
     /// Dir that can be specified for outputting pixi debug state.
     pub debug_dir: Option<PathBuf>,
 
+    /// Extra input globs to include in addition to the default ones.
+    #[serde(default)]
+    pub extra_input_globs: Vec<String>,
+
     /// Binary executables to produce.
     pub bins: Option<Vec<MojoBinConfig>>,
 

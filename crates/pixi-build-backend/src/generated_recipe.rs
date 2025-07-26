@@ -31,6 +31,7 @@ pub struct PythonParams {
 pub trait GenerateRecipe {
     type Config: BackendConfig;
 
+<<<<<<< Updated upstream
     /// Generates an [`IntermediateRecipe`] from a [`ProjectModelV1`].
     fn generate_recipe(
         &self,
@@ -77,6 +78,8 @@ pub trait BackendConfig: DeserializeOwned + Default {
     fn debug_dir(&self) -> Option<&Path>;
 }
 
+=======
+>>>>>>> Stashed changes
 #[derive(Default)]
 pub struct GeneratedRecipe {
     pub recipe: IntermediateRecipe,
