@@ -69,17 +69,19 @@ impl GenerateRecipe for MojoGenerator {
         };
 
         // How do I set globs on the build??
-        generated_recipe.build_input_globs = Self::globs();
+        generated_recipe.build_input_globs = Self::globs().collect::<Vec<_>>();
 
         Ok(generated_recipe)
     }
 
     fn extract_input_globs_from_build(
-        _config: &Self::Config,
+        config: &Self::Config,
         _workdir: impl AsRef<Path>,
         _editable: bool,
     ) -> Vec<String> {
         Self::globs()
+            .chain(config.extra_input_globs.clone())
+            .collect::<Vec<_>>()
     }
 
     fn default_variants(&self, _host_platform: Platform) -> BTreeMap<NormalizedKey, Vec<Variable>> {
@@ -88,17 +90,16 @@ impl GenerateRecipe for MojoGenerator {
 }
 
 impl MojoGenerator {
-    fn globs() -> Vec<String> {
+    fn globs() -> impl Iterator<Item = String> {
         [
             // Source files
-            "**/*.mojo,*.🔥",
+            "**/*.{mojo,🔥}",
             "**/pixi.toml",
             "**/pixi.lock",
             "**/recipe.yaml",
         ]
         .iter()
         .map(|s: &&str| s.to_string())
-        .collect()
     }
 }
 

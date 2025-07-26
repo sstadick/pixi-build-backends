@@ -32,6 +32,7 @@ pub struct PythonParams {
 pub trait GenerateRecipe {
     type Config: BackendConfig;
 
+<<<<<<< Updated upstream
     /// Generates an [`IntermediateRecipe`] from a [`ProjectModelV1`].
     fn generate_recipe(
         &self,
@@ -82,7 +83,9 @@ pub trait BackendConfig: DeserializeOwned + Clone {
     fn merge_with_target_config(&self, target_config: &Self) -> miette::Result<Self>;
 }
 
-#[derive(Default, Clone)]
+=======
+>>>>>>> Stashed changes
+#[derive(Default)]
 pub struct GeneratedRecipe {
     pub recipe: IntermediateRecipe,
     pub metadata_input_globs: BTreeSet<String>,
