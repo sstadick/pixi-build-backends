@@ -4,7 +4,7 @@ use std::{
 };
 
 use pixi_build_types::ProjectModelV1;
-use rattler_build::{NormalizedKey, recipe::variable::Variable};
+use rattler_build::{recipe::variable::Variable, NormalizedKey};
 use rattler_conda_types::Platform;
 use recipe_stage0::recipe::{ConditionalList, IntermediateRecipe, Item, Package, Source, Value};
 use serde::de::DeserializeOwned;
@@ -31,7 +31,6 @@ pub struct PythonParams {
 pub trait GenerateRecipe {
     type Config: BackendConfig;
 
-<<<<<<< Updated upstream
     /// Generates an [`IntermediateRecipe`] from a [`ProjectModelV1`].
     fn generate_recipe(
         &self,
@@ -78,8 +77,6 @@ pub trait BackendConfig: DeserializeOwned + Default {
     fn debug_dir(&self) -> Option<&Path>;
 }
 
-=======
->>>>>>> Stashed changes
 #[derive(Default)]
 pub struct GeneratedRecipe {
     pub recipe: IntermediateRecipe,
