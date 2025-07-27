@@ -12,12 +12,6 @@ pub struct BuildScriptContext {
     pub bins: Option<Vec<MojoBinConfig>>,
     /// Any packages to create.
     pub pkg: Option<MojoPkgConfig>,
-
-    /// Not currenlty used
-    /// The package has a host dependency on Python.
-    /// This is used to determine if the build script
-    /// should include Python-related logic.
-    pub has_host_python: bool,
 }
 
 impl BuildScriptContext {

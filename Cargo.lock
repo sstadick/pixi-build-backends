@@ -1546,6 +1546,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "deunicode"
+version = "1.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abd57806937c9cc163efc8ea3910e00a62e2aeb0b8119f1793a978088f8f6b04"
+
+[[package]]
 name = "diffy"
 version = "0.4.2"
 source = "git+https://github.com/prefix-dev/diffy.git?branch=master#da81bf4ceb4a5b9e6f9c43616a4a74aabf50a29b"
@@ -3999,6 +4005,7 @@ dependencies = [
  "recipe-stage0",
  "serde",
  "serde_json",
+ "slug",
  "tempfile",
  "tokio",
 ]
@@ -6185,6 +6192,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f92a496fb766b417c996b9c5e57daf2f7ad3b0bebe1ccfca4856390e3d3bb67"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "slug"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "882a80f72ee45de3cc9a5afeb2da0331d58df69e4e7d8eeb5d3c7784ae67e724"
+dependencies = [
+ "deunicode",
+ "wasm-bindgen",
 ]
 
 [[package]]

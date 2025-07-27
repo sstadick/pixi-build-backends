@@ -7,8 +7,8 @@ use std::{
 };
 
 use build_script::BuildScriptContext;
-use config::MojoBackendConfig;
-use miette::IntoDiagnostic;
+use config::{slugify_name, MojoBackendConfig, MojoBinConfig, MojoPkgConfig};
+use miette::{Error, IntoDiagnostic};
 use pixi_build_backend::{
     generated_recipe::{GenerateRecipe, GeneratedRecipe, PythonParams},
     intermediate_backend::IntermediateBackendInstantiator,
@@ -34,6 +34,33 @@ impl GenerateRecipe for MojoGenerator {
         let mut generated_recipe =
             GeneratedRecipe::from_model(model.clone(), manifest_root.clone());
 
+        let slug_name = slugify_name(
+            generated_recipe
+                .recipe
+                .package
+                .name
+                .concrete()
+                .ok_or(Error::msg("Package is missing a name"))?,
+        );
+
+        // Update bins configs
+        let (bins, bin_autodetected) =
+            MojoBinConfig::fill_defaults(config.bins.as_ref(), &manifest_root, &slug_name)?;
+
+        // Update pkg config
+        let (mut pkg, pkg_autodetected) =
+            MojoPkgConfig::fill_defaults(config.pkg.as_ref(), &manifest_root, &slug_name)?;
+
+        // Make sure we have at least one of the two
+        if bins.is_none() && pkg.is_none() {
+            return Err(Error::msg("No bin or pkg configuration detected."));
+        }
+
+        // If we are auto-generating both, keep only the bin?
+        if bin_autodetected && pkg_autodetected {
+            pkg = None;
+        }
+
         // Add compiler
         let requirements = &mut generated_recipe.recipe.requirements;
         let resolved_requirements = requirements.resolve(Some(host_platform));
@@ -51,17 +78,11 @@ impl GenerateRecipe for MojoGenerator {
                 .push(mojo_compiler_pkg.parse().into_diagnostic()?);
         }
 
-        // Check if the host platform has a host python dependency
-        // TODO: surely this will be needed for compiling bindings or something? or maybe those
-        // will be handled by uv?
-        let has_host_python = resolved_requirements.contains(&PackageName::new_unchecked("python"));
-
         let build_script = BuildScriptContext {
             source_dir: manifest_root.display().to_string(),
             dist: config.dist_dir.clone().map(|d| d.display().to_string()),
-            bins: config.bins.clone(),
-            pkg: config.pkg.clone(),
-            has_host_python,
+            bins,
+            pkg,
         }
         .render();
 
@@ -96,9 +117,6 @@ impl MojoGenerator {
         [
             // Source files
             "**/*.{mojo,🔥}",
-            "**/pixi.toml",
-            "**/pixi.lock",
-            "**/recipe.yaml",
         ]
         .iter()
         .map(|s: &&str| s.to_string())
@@ -307,61 +325,6 @@ mod tests {
             ".content" => "[ ... script ... ]",
         });
     }
-
-    // I think we'll want this back at some point
-    //    #[test]
-    //    fn test_has_python_is_set_in_build_script() {
-    //        let project_model = project_fixture!({
-    //            "name": "foobar",
-    //            "version": "0.1.0",
-    //            "targets": {
-    //                "defaultTarget": {
-    //                    "runDependencies": {
-    //                        "boltons": {
-    //                            "binary": {
-    //                                "version": "*"
-    //                            }
-    //                        }
-    //                    },
-    //                    "hostDependencies": {
-    //                        "python": {
-    //                            "binary": {
-    //                                "version": "*"
-    //                            }
-    //                        }
-    //                    }
-    //                },
-    //            }
-    //        });
-    //
-    //        let generated_recipe = MojoGenerator::default()
-    //            .generate_recipe(
-    //                &project_model,
-    //                &MojoBackendConfig::default(),
-    //                PathBuf::from("."),
-    //                Platform::Linux64,
-    //                None,
-    //            )
-    //            .expect("Failed to generate recipe");
-    //
-    //        // we want to check that
-    //        // -DPython_EXECUTABLE=$PYTHON is set in the build script
-    //        insta::assert_yaml_snapshot!(generated_recipe.recipe.build,
-    //
-    //            {
-    //            ".script.content" => insta::dynamic_redaction(|value, _path| {
-    //                dbg!(&value);
-    //                // assert that the value looks like a uuid here
-    //                assert!(value
-    //                    .as_slice()
-    //                    .unwrap()
-    //                    .iter()
-    //                    .any(|c| c.as_str().unwrap().contains("-DPython_EXECUTABLE"))
-    //                );
-    //                "[content]"
-    //            })
-    //        });
-    //    }
 
     #[test]
     fn test_max_is_not_added_if_max_is_already_present() {
