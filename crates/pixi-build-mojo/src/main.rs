@@ -7,7 +7,7 @@ use std::{
 };
 
 use build_script::BuildScriptContext;
-use config::{slugify_name, MojoBackendConfig, MojoBinConfig, MojoPkgConfig};
+use config::{clean_project_name, MojoBackendConfig, MojoBinConfig, MojoPkgConfig};
 use miette::{Error, IntoDiagnostic};
 use pixi_build_backend::{
     generated_recipe::{GenerateRecipe, GeneratedRecipe, PythonParams},
@@ -34,7 +34,7 @@ impl GenerateRecipe for MojoGenerator {
         let mut generated_recipe =
             GeneratedRecipe::from_model(model.clone(), manifest_root.clone());
 
-        let slug_name = slugify_name(
+        let slug_name = clean_project_name(
             generated_recipe
                 .recipe
                 .package
@@ -188,10 +188,9 @@ mod tests {
                 &project_model,
                 &MojoBackendConfig {
                     bins: Some(vec![MojoBinConfig {
-                        name: String::from("example"),
-                        path: String::from("./main.mojo"),
+                        name: Some(String::from("example")),
+                        path: Some(String::from("./main.mojo")),
                         extra_args: Some(vec![String::from("-I"), String::from(".")]),
-                        env: IndexMap::new(),
                     }]),
                     ..Default::default()
                 },
@@ -229,16 +228,14 @@ mod tests {
                 &project_model,
                 &MojoBackendConfig {
                     bins: Some(vec![MojoBinConfig {
-                        name: String::from("example"),
-                        path: String::from("./main.mojo"),
+                        name: Some(String::from("example")),
+                        path: Some(String::from("./main.mojo")),
                         extra_args: Some(vec![String::from("-i"), String::from(".")]),
-                        env: IndexMap::new(),
                     }]),
                     pkg: Some(MojoPkgConfig {
-                        name: String::from("lib"),
-                        path: String::from("mylib"),
+                        name: Some(String::from("lib")),
+                        path: Some(String::from("mylib")),
                         extra_args: Some(vec![String::from("-i"), String::from(".")]),
-                        env: IndexMap::new(),
                     }),
                     ..Default::default()
                 },
@@ -271,11 +268,15 @@ mod tests {
             }
         });
 
+        // Create a temporary directory with a main.mojo file so the test has something to build
+        let temp = tempfile::TempDir::new().unwrap();
+        std::fs::write(temp.path().join("main.mojo"), "def main():\n    pass").unwrap();
+
         let generated_recipe = MojoGenerator::default()
             .generate_recipe(
                 &project_model,
                 &MojoBackendConfig::default(),
-                PathBuf::from("."),
+                temp.path().to_path_buf(),
                 Platform::Linux64,
                 None,
             )
@@ -307,6 +308,10 @@ mod tests {
 
         let env = IndexMap::from([("foo".to_string(), "bar".to_string())]);
 
+        // Create a temporary directory with a main.mojo file so the test has something to build
+        let temp = tempfile::TempDir::new().unwrap();
+        std::fs::write(temp.path().join("main.mojo"), "def main():\n    pass").unwrap();
+
         let generated_recipe = MojoGenerator::default()
             .generate_recipe(
                 &project_model,
@@ -314,7 +319,7 @@ mod tests {
                     env: env.clone(),
                     ..Default::default()
                 },
-                PathBuf::from("."),
+                temp.path().to_path_buf(),
                 Platform::Linux64,
                 None,
             )
@@ -351,11 +356,15 @@ mod tests {
             }
         });
 
+        // Create a temporary directory with a main.mojo file so the test has something to build
+        let temp = tempfile::TempDir::new().unwrap();
+        std::fs::write(temp.path().join("main.mojo"), "def main():\n    pass").unwrap();
+
         let generated_recipe = MojoGenerator::default()
             .generate_recipe(
                 &project_model,
                 &MojoBackendConfig::default(),
-                PathBuf::from("."),
+                temp.path().to_path_buf(),
                 Platform::Linux64,
                 None,
             )

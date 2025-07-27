@@ -5,7 +5,4 @@ expression: result
 {
     "**/*.{mojo,🔥}",
     "**/.c",
-    "**/pixi.lock",
-    "**/pixi.toml",
-    "**/recipe.yaml",
 }
