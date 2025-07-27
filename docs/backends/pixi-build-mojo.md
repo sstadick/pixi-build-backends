@@ -32,15 +32,14 @@ To use the Mojo backend in your `pixi.toml`, add it to your package's build conf
 ├── pixi.lock
 ├── pixi.toml
 ├── README.md
-├── src
-└── structure.txt
+└── src
 ```
 
 Commented out sections represent optional params that may be useful.
 
 ```toml
 [workspace]
-authors = ["J. Doe <john@mail.com>"]
+authors = ["J. Doe <jdoe@mail.com>"]
 platforms = ["linux-64"]
 preview = ["pixi-build"]
 channels = [

@@ -34,7 +34,7 @@ impl GenerateRecipe for MojoGenerator {
         let mut generated_recipe =
             GeneratedRecipe::from_model(model.clone(), manifest_root.clone());
 
-        // we need to add compilers
+        // Add compiler
         let requirements = &mut generated_recipe.recipe.requirements;
         let resolved_requirements = requirements.resolve(Some(host_platform));
 
@@ -71,7 +71,6 @@ impl GenerateRecipe for MojoGenerator {
             ..Default::default()
         };
 
-        // How do I set globs on the build??
         generated_recipe.build_input_globs = Self::globs().collect::<BTreeSet<_>>();
 
         Ok(generated_recipe)
