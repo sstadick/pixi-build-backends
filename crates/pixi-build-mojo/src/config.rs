@@ -170,7 +170,7 @@ pub struct MojoPkgConfig {
 impl MojoPkgConfig {
     /// Fill in any missing info anod or try to find our default options.
     ///
-    /// - If None, try to find a `src` or `<project_name>` dir with an `__init__.mojo` file in it.
+    /// - If None, try to find a `<project_name>` or `src` dir with an `__init__.mojo` file in it.
     /// - If Some, see if name or path need to be filled in.
     pub fn fill_defaults(
         conf: Option<&Self>,
