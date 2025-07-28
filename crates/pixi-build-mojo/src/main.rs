@@ -56,7 +56,7 @@ impl GenerateRecipe for MojoGenerator {
             return Err(Error::msg("No bin or pkg configuration detected."));
         }
 
-        // If we are auto-generating both, keep only the bin?
+        // If we are auto-generating both, keep only the bin
         if bin_autodetected && pkg_autodetected {
             pkg = None;
         }
