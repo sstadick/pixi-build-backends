@@ -8,6 +8,7 @@ use miette::Error;
 use pixi_build_backend::generated_recipe::BackendConfig;
 use serde::{Deserialize, Serialize};
 
+/// Top level config struct for the Mojo backend.
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MojoBackendConfig {
@@ -40,6 +41,51 @@ impl BackendConfig for MojoBackendConfig {
     }
 }
 
+impl MojoBackendConfig {
+    /// Auto-derive the bins and pkg config if they have not been specified by the user,
+    /// or if they have only been partially specified.
+    ///
+    /// See [`MojoPkgConfig`] and [`MojoBinConfig`] for details on how they are derived.
+    /// The following rules are applied for choosing when to use derived configs:
+    ///
+    /// - If a `pkg` has been specified by user, don't derive `bins`
+    /// - If a `bin` has been specified by user, don't derive `pkg`
+    /// - If both a `pkg` and `bin` have been auto-derived, only keep the `bin`
+    pub fn auto_derive(
+        &self,
+        manifest_root: &PathBuf,
+        project_name: &str,
+    ) -> miette::Result<(Option<Vec<MojoBinConfig>>, Option<MojoPkgConfig>)> {
+        // Update bins configs
+        let (mut bins, bin_autodetected) =
+            MojoBinConfig::auto_derive(self.bins.as_ref(), &manifest_root, &project_name)?;
+
+        // Update pkg config
+        let (mut pkg, pkg_autodetected) =
+            MojoPkgConfig::auto_derive(self.pkg.as_ref(), &manifest_root, &project_name)?;
+
+        // Make sure we have at least one of the two
+        if bins.is_none() && pkg.is_none() {
+            return Err(Error::msg("No bin or pkg configuration detected."));
+        }
+
+        // If we are auto-generating both, keep only the bin
+        if bin_autodetected && pkg_autodetected {
+            pkg = None;
+        }
+        // If either wasn't auto-detected, disable auto-detection of the other
+        else if bin_autodetected && (!pkg_autodetected && pkg.is_some()) {
+            // If I'm publishing a pkg, I may not want to also publish a bin
+            bins = None
+        } else if (!bin_autodetected && bins.is_some()) && pkg_autodetected {
+            // If I'm publishing a bin, I may not want to publish the associated pkg
+            pkg = None
+        }
+
+        Ok((bins, pkg))
+    }
+}
+
 /// Config object for a Mojo binary.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -49,11 +95,13 @@ pub struct MojoBinConfig {
     /// This will default to the name of the project for the first
     /// binary selected, any dashes will be replaced with `_`.
     pub name: Option<String>,
+
     /// Path to file that has the `main` method.
     ///
     /// This will default to looking for a `main.mojo` file in:
     /// - `<manifest_root>/main.mojo`
     pub path: Option<String>,
+
     /// Extra args to pass to the compiler.
     #[serde(default, rename(serialize = "extra_args"))]
     pub extra_args: Option<Vec<String>>,
@@ -65,7 +113,7 @@ impl MojoBinConfig {
     /// - If None, try to find a `main.mojo` file in manfiest_root
     /// - If any, for the first one, see if name or path need to be filled in
     /// - If any, verify that there are no name collisions
-    pub fn fill_defaults(
+    pub fn auto_derive(
         conf: Option<&Vec<Self>>,
         manifest_root: &PathBuf,
         project_name: &str,
@@ -132,9 +180,9 @@ impl MojoBinConfig {
         Ok((Some(conf), false))
     }
 
+    /// Try to find main.mojo in:
+    /// - <manifest_root>/main.mojo
     fn find_main(root: &PathBuf) -> Option<PathBuf> {
-        // Try to find main.mojo in:
-        // - <manifest_root>/main.mojo
         let mut path = root.join("main");
         for ext in ["mojo", "🔥"] {
             path.set_extension(ext);
@@ -155,6 +203,7 @@ pub struct MojoPkgConfig {
     /// This will default to the name of the project, any dashes will
     /// be replaced with `_`.
     pub name: Option<String>,
+
     /// Path to the directory that constitutes the package.
     ///
     /// This will default to lookingo for a folder with an `__init__.mojo` in
@@ -162,6 +211,7 @@ pub struct MojoPkgConfig {
     /// - `<manifest_root>/<package_name>/__init__.mojo`
     /// - `<manifest_root>/src/__init__.mojo`
     pub path: Option<String>,
+
     /// Extra args to pass to the compiler.
     #[serde(default, rename(serialize = "extra_args"))]
     pub extra_args: Option<Vec<String>>,
@@ -172,7 +222,7 @@ impl MojoPkgConfig {
     ///
     /// - If None, try to find a `<project_name>` or `src` dir with an `__init__.mojo` file in it.
     /// - If Some, see if name or path need to be filled in.
-    pub fn fill_defaults(
+    pub fn auto_derive(
         conf: Option<&Self>,
         manifest_root: &PathBuf,
         package_name: &str,
@@ -212,6 +262,13 @@ impl MojoPkgConfig {
         }
     }
 
+    /// Find the parent directory of a possible package `__init__.mojo` file.
+    ///
+    /// This checks (in this order):
+    /// - `<project_name>`
+    /// - src
+    ///
+    /// and returns the first one found.
     fn find_init_parent(root: &PathBuf, project_name: &str) -> Option<PathBuf> {
         for dir in [project_name, "src"] {
             let mut path = root.join(dir).join("__init__");
@@ -249,83 +306,97 @@ mod tests {
 
     #[derive(Debug)]
     enum ExpectedBinResult {
-        Success { name: Option<&'static str>, autodetected: bool },
+        /// A possible binary name that would be found, as well as whether or not
+        /// it was auto-detected, or whether it was found via user configuration.
+        Success {
+            binary_name: Option<&'static str>,
+            autodetected: bool,
+        },
+        /// There was some misconfiguration resulting in an error to show the user.
         Error(&'static str),
     }
 
     struct BinTestCase {
+        /// User specified config.
         config: Option<Vec<MojoBinConfig>>,
+        /// Path to a project `main.mojo` file to be created in a temp dir.
         main_file: Option<&'static str>,
+        /// The expected result of the test.
         expected: ExpectedBinResult,
     }
 
     #[rstest]
-    #[case::no_config_no_main(BinTestCase { 
-        config: None, 
-        main_file: None, 
-        expected: ExpectedBinResult::Success { name: None, autodetected: false } 
+    #[case::no_config_no_main(BinTestCase {
+        config: None,
+        main_file: None,
+        expected: ExpectedBinResult::Success { binary_name: None, autodetected: false }
     })]
-    #[case::no_config_with_main_mojo(BinTestCase { 
-        config: None, 
-        main_file: Some("main.mojo"), 
-        expected: ExpectedBinResult::Success { name: Some("test_project"), autodetected: true } 
+    #[case::no_config_with_main_mojo(BinTestCase {
+        config: None,
+        main_file: Some("main.mojo"),
+        expected: ExpectedBinResult::Success { binary_name: Some("test_project"), autodetected: true }
     })]
-    #[case::no_config_with_main_fire(BinTestCase { 
-        config: None, 
-        main_file: Some("main.🔥"), 
-        expected: ExpectedBinResult::Success { name: Some("test_project"), autodetected: true } 
+    #[case::no_config_with_main_fire(BinTestCase {
+        config: None,
+        main_file: Some("main.🔥"),
+        expected: ExpectedBinResult::Success { binary_name: Some("test_project"), autodetected: true }
     })]
-    #[case::empty_config(BinTestCase { 
-        config: Some(vec![]), 
-        main_file: None, 
-        expected: ExpectedBinResult::Success { name: None, autodetected: false } 
+    #[case::empty_config(BinTestCase {
+        config: Some(vec![]),
+        main_file: None,
+        expected: ExpectedBinResult::Success { binary_name: None, autodetected: false }
     })]
-    #[case::config_missing_name_and_path(BinTestCase { 
-        config: Some(vec![MojoBinConfig::default()]), 
-        main_file: Some("main.mojo"), 
-        expected: ExpectedBinResult::Success { name: Some("test_project"), autodetected: false } 
+    #[case::config_missing_name_and_path(BinTestCase {
+        config: Some(vec![MojoBinConfig::default()]),
+        main_file: Some("main.mojo"),
+        expected: ExpectedBinResult::Success { binary_name: Some("test_project"), autodetected: false }
     })]
-    #[case::config_missing_path_no_main(BinTestCase { 
-        config: Some(vec![MojoBinConfig::default()]), 
-        main_file: None, 
-        expected: ExpectedBinResult::Error("Could not find main.mojo for configured binary") 
+    #[case::config_missing_path_no_main(BinTestCase {
+        config: Some(vec![MojoBinConfig::default()]),
+        main_file: None,
+        expected: ExpectedBinResult::Error("Could not find main.mojo for configured binary")
     })]
-    #[case::multiple_bins_missing_name(BinTestCase { 
+    #[case::multiple_bins_missing_name(BinTestCase {
         config: Some(vec![
             MojoBinConfig { name: Some("bin1".to_string()), path: Some("main1.mojo".to_string()), ..Default::default() },
             MojoBinConfig { path: Some("main2.mojo".to_string()), ..Default::default() },
-        ]), 
-        main_file: None, 
-        expected: ExpectedBinResult::Error("Binary configuration 2 is missing a name.") 
+        ]),
+        main_file: None,
+        expected: ExpectedBinResult::Error("Binary configuration 2 is missing a name.")
     })]
-    #[case::multiple_bins_missing_path(BinTestCase { 
+    #[case::multiple_bins_missing_path(BinTestCase {
         config: Some(vec![
             MojoBinConfig { name: Some("bin1".to_string()), path: Some("main1.mojo".to_string()), ..Default::default() },
             MojoBinConfig { name: Some("bin2".to_string()), ..Default::default() },
-        ]), 
-        main_file: None, 
-        expected: ExpectedBinResult::Error("Binary configuration bin2 is missing a path.") 
+        ]),
+        main_file: None,
+        expected: ExpectedBinResult::Error("Binary configuration bin2 is missing a path.")
     })]
-    #[case::duplicate_names(BinTestCase { 
+    #[case::duplicate_names(BinTestCase {
         config: Some(vec![
             MojoBinConfig { name: Some("mybin".to_string()), path: Some("main1.mojo".to_string()), ..Default::default() },
             MojoBinConfig { name: Some("mybin".to_string()), path: Some("main2.mojo".to_string()), ..Default::default() },
-        ]), 
-        main_file: None, 
-        expected: ExpectedBinResult::Error("Binary name has been used twice: mybin") 
+        ]),
+        main_file: None,
+        expected: ExpectedBinResult::Error("Binary name has been used twice: mybin")
     })]
     fn test_mojo_bin_config_fill_defaults(#[case] test_case: BinTestCase) {
         let temp = TempDir::new().unwrap();
         let manifest_root = temp.path().to_path_buf();
 
+        // Write the main.mojo file specified by test case, if present
         if let Some(filename) = test_case.main_file {
             std::fs::write(manifest_root.join(filename), "def main():\n    pass").unwrap();
         }
 
-        let result = MojoBinConfig::fill_defaults(test_case.config.as_ref(), &manifest_root, "test_project");
+        let result =
+            MojoBinConfig::auto_derive(test_case.config.as_ref(), &manifest_root, "test_project");
 
         match test_case.expected {
-            ExpectedBinResult::Success { name: expected_name, autodetected: expected_autodetected } => {
+            ExpectedBinResult::Success {
+                binary_name: expected_name,
+                autodetected: expected_autodetected,
+            } => {
                 let (bins, autodetected) = result.unwrap();
                 assert_eq!(autodetected, expected_autodetected);
 
@@ -353,55 +424,64 @@ mod tests {
 
     #[derive(Debug)]
     enum ExpectedPkgResult {
-        Success { name: Option<&'static str>, autodetected: bool },
+        /// A possible pkg name that would be found, as well as whether or not
+        /// it was auto-detected, or whether it was found via user configuration.
+        Success {
+            name: Option<&'static str>,
+            autodetected: bool,
+        },
+        /// An expected error message that the user would be shown.
         Error(&'static str),
     }
 
     struct PkgTestCase {
+        /// User defined config for the pkg
         config: Option<MojoPkgConfig>,
+        /// Path to a `__init__.mojo` file to be created in a temp dir.
         init_file: Option<(&'static str, &'static str)>, // (directory, filename)
+        /// Expected result of the test.
         expected: ExpectedPkgResult,
     }
 
     #[rstest]
-    #[case::no_config_no_init(PkgTestCase { 
-        config: None, 
-        init_file: None, 
-        expected: ExpectedPkgResult::Success { name: None, autodetected: false } 
+    #[case::no_config_no_init(PkgTestCase {
+        config: None,
+        init_file: None,
+        expected: ExpectedPkgResult::Success { name: None, autodetected: false }
     })]
-    #[case::no_config_with_init_in_project_dir(PkgTestCase { 
-        config: None, 
-        init_file: Some(("test_project", "__init__.mojo")), 
-        expected: ExpectedPkgResult::Success { name: Some("test_project"), autodetected: true } 
+    #[case::no_config_with_init_in_project_dir(PkgTestCase {
+        config: None,
+        init_file: Some(("test_project", "__init__.mojo")),
+        expected: ExpectedPkgResult::Success { name: Some("test_project"), autodetected: true }
     })]
-    #[case::no_config_with_init_in_src(PkgTestCase { 
-        config: None, 
-        init_file: Some(("src", "__init__.mojo")), 
-        expected: ExpectedPkgResult::Success { name: Some("test_project"), autodetected: true } 
+    #[case::no_config_with_init_in_src(PkgTestCase {
+        config: None,
+        init_file: Some(("src", "__init__.mojo")),
+        expected: ExpectedPkgResult::Success { name: Some("test_project"), autodetected: true }
     })]
-    #[case::no_config_with_init_fire_emoji(PkgTestCase { 
-        config: None, 
-        init_file: Some(("src", "__init__.🔥")), 
-        expected: ExpectedPkgResult::Success { name: Some("test_project"), autodetected: true } 
+    #[case::no_config_with_init_fire_emoji(PkgTestCase {
+        config: None,
+        init_file: Some(("src", "__init__.🔥")),
+        expected: ExpectedPkgResult::Success { name: Some("test_project"), autodetected: true }
     })]
-    #[case::config_missing_name_and_path(PkgTestCase { 
-        config: Some(MojoPkgConfig::default()), 
-        init_file: Some(("src", "__init__.mojo")), 
-        expected: ExpectedPkgResult::Success { name: Some("test_project"), autodetected: false } 
+    #[case::config_missing_name_and_path(PkgTestCase {
+        config: Some(MojoPkgConfig::default()),
+        init_file: Some(("src", "__init__.mojo")),
+        expected: ExpectedPkgResult::Success { name: Some("test_project"), autodetected: false }
     })]
-    #[case::config_with_all_fields(PkgTestCase { 
+    #[case::config_with_all_fields(PkgTestCase {
         config: Some(MojoPkgConfig {
             name: Some("mypackage".to_string()),
             path: Some("custom/path".to_string()),
             extra_args: Some(vec!["-O3".to_string()]),
-        }), 
-        init_file: None, 
-        expected: ExpectedPkgResult::Success { name: Some("mypackage"), autodetected: false } 
+        }),
+        init_file: None,
+        expected: ExpectedPkgResult::Success { name: Some("mypackage"), autodetected: false }
     })]
-    #[case::config_missing_path_no_init(PkgTestCase { 
-        config: Some(MojoPkgConfig::default()), 
-        init_file: None, 
-        expected: ExpectedPkgResult::Error("Could not find valid package path for test_project") 
+    #[case::config_missing_path_no_init(PkgTestCase {
+        config: Some(MojoPkgConfig::default()),
+        init_file: None,
+        expected: ExpectedPkgResult::Error("Could not find valid package path for test_project")
     })]
     fn test_mojo_pkg_config_fill_defaults(#[case] test_case: PkgTestCase) {
         let temp = TempDir::new().unwrap();
@@ -413,10 +493,14 @@ mod tests {
             std::fs::write(init_dir.join(filename), "").unwrap();
         }
 
-        let result = MojoPkgConfig::fill_defaults(test_case.config.as_ref(), &manifest_root, "test_project");
+        let result =
+            MojoPkgConfig::auto_derive(test_case.config.as_ref(), &manifest_root, "test_project");
 
         match test_case.expected {
-            ExpectedPkgResult::Success { name: expected_name, autodetected: expected_autodetected } => {
+            ExpectedPkgResult::Success {
+                name: expected_name,
+                autodetected: expected_autodetected,
+            } => {
                 let (pkg, autodetected) = result.unwrap();
                 assert_eq!(autodetected, expected_autodetected);
 

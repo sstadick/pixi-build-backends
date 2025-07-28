@@ -7,13 +7,13 @@ use std::{
 };
 
 use build_script::BuildScriptContext;
-use config::{clean_project_name, MojoBackendConfig, MojoBinConfig, MojoPkgConfig};
+use config::{MojoBackendConfig, clean_project_name};
 use miette::{Error, IntoDiagnostic};
 use pixi_build_backend::{
     generated_recipe::{GenerateRecipe, GeneratedRecipe, PythonParams},
     intermediate_backend::IntermediateBackendInstantiator,
 };
-use rattler_build::{recipe::variable::Variable, NormalizedKey};
+use rattler_build::{NormalizedKey, recipe::variable::Variable};
 use rattler_conda_types::{PackageName, Platform};
 use recipe_stage0::recipe::Script;
 
@@ -34,7 +34,7 @@ impl GenerateRecipe for MojoGenerator {
         let mut generated_recipe =
             GeneratedRecipe::from_model(model.clone(), manifest_root.clone());
 
-        let slug_name = clean_project_name(
+        let cleaned_project_name = clean_project_name(
             generated_recipe
                 .recipe
                 .package
@@ -43,31 +43,8 @@ impl GenerateRecipe for MojoGenerator {
                 .ok_or(Error::msg("Package is missing a name"))?,
         );
 
-        // Update bins configs
-        let (mut bins, bin_autodetected) =
-            MojoBinConfig::fill_defaults(config.bins.as_ref(), &manifest_root, &slug_name)?;
-
-        // Update pkg config
-        let (mut pkg, pkg_autodetected) =
-            MojoPkgConfig::fill_defaults(config.pkg.as_ref(), &manifest_root, &slug_name)?;
-
-        // Make sure we have at least one of the two
-        if bins.is_none() && pkg.is_none() {
-            return Err(Error::msg("No bin or pkg configuration detected."));
-        }
-
-        // If we are auto-generating both, keep only the bin
-        if bin_autodetected && pkg_autodetected {
-            pkg = None;
-        }
-        // If either wasn't auto-detected, disable auto-detection of the other
-        else if bin_autodetected && (!pkg_autodetected && pkg.is_some()) {
-            // If I'm publishing a pkg, I may not want to also publish a bin
-            bins = None
-        } else if (!bin_autodetected && bins.is_some()) && pkg_autodetected {
-            // If I'm publishing a bin, I may not want to publish the associated pkg
-            pkg = None
-        }
+        // Auto-derive bins and pkg fields/configs if needed
+        let (bins, pkg) = config.auto_derive(&manifest_root, &cleaned_project_name)?;
 
         // Add compiler
         let requirements = &mut generated_recipe.recipe.requirements;
