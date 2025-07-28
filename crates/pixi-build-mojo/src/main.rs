@@ -44,7 +44,7 @@ impl GenerateRecipe for MojoGenerator {
         );
 
         // Update bins configs
-        let (bins, bin_autodetected) =
+        let (mut bins, bin_autodetected) =
             MojoBinConfig::fill_defaults(config.bins.as_ref(), &manifest_root, &slug_name)?;
 
         // Update pkg config
@@ -59,6 +59,14 @@ impl GenerateRecipe for MojoGenerator {
         // If we are auto-generating both, keep only the bin?
         if bin_autodetected && pkg_autodetected {
             pkg = None;
+        }
+        // If either wasn't auto-detected, disable auto-detection of the other
+        else if bin_autodetected && (!pkg_autodetected && pkg.is_some()) {
+            // If I'm publishing a pkg, I may not want to also publish a bin
+            bins = None
+        } else if (!bin_autodetected && bins.is_some()) && pkg_autodetected {
+            // If I'm publishing a bin, I may not want to publish the associated pkg
+            pkg = None
         }
 
         // Add compiler

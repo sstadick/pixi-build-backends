@@ -17,9 +17,9 @@ This backend automatically generates conda packages from Mojo projects.
 
 The generated packages can be installed into local envs for devlopment, or packaged for distribution.
 
-### Auto-discovery
+### Auto-derive of pkg and bin
 
-The Mojo backend includes auto-discovery of your project structure:
+The Mojo backend includes auto-discovery of your project structure and will derive the following:
 
 - **Binaries**: Automatically searches for `main.mojo` or `main.🔥` in:
   - `<project_root>/main.mojo`
@@ -28,6 +28,11 @@ The Mojo backend includes auto-discovery of your project structure:
   - `<project_root>/src/`
 
 This means in most cases, you don't need to explicitly configure the `bins` or `pkg` fields.
+
+**Caveats**:
+- If both a `bin` and a `pkg` are auto-derived, only the `bin` will be created, you must manually specify the pkg.
+- If the user specifies a `pkg` a `bin` will not be auto-derived.
+- If the user specifies a `bin` a `pkg` will not be auto-derived.
 
 
 ## Basic Usage
@@ -51,9 +56,7 @@ With the project structure above, pixi-build-mojo will automatically discover:
 - The binary from `main.mojo`
 - The package from `greetings/__init__.mojo`
 
-**Note** When both a binary and lib are auto-discovered, only the bin will be built as a project artifact. To create a package as well, add a `[package.build.configuration.pkg]` section to manualy confiruge the package.
-
-Here's a minimal configuration that leverages auto-discovery:
+Here's a minimal configuration that leverages auto-derive:
 
 ```toml
 [workspace]
@@ -95,12 +98,12 @@ greetings = { path = "." }
 
 ### Project Structure Examples
 
-The auto-discovery feature supports various common project layouts:
+The auto-derive feature supports various common project layouts:
 
 #### Binary-only project
 ```txt
 .
-├── main.mojo           # Auto-discovered as binary
+├── main.mojo           # Auto-derive as binary
 ├── pixi.toml
 └── README.md
 ```
@@ -108,7 +111,7 @@ The auto-discovery feature supports various common project layouts:
 #### Package-only project
 ```txt
 .
-├── mypackage/          # Auto-discovered if matches project name
+├── mypackage/          # Auto-derive if matches project name
 │   ├── __init__.mojo
 │   └── utils.mojo
 ├── pixi.toml
@@ -119,7 +122,7 @@ The auto-discovery feature supports various common project layouts:
 ```txt
 .
 ├── src/
-│   ├── __init__.mojo   # Auto-discovered as package
+│   ├── __init__.mojo   # Auto-derive as package
 │   └── lib.mojo
 ├── pixi.toml
 └── README.md
@@ -129,9 +132,9 @@ The auto-discovery feature supports various common project layouts:
 ```txt
 .
 ├── greetings/
-│   ├── __init__.mojo   # NOT auto-discovered as package
+│   ├── __init__.mojo   # NOT auto-derived as package
 │   └── lib.mojo
-├── main.mojo           # Auto-discovered as binary
+├── main.mojo           # Auto-derived as binary
 ├── pixi.toml
 └── README.md
 ```
@@ -195,13 +198,14 @@ extra-input-globs = ["**/*.c", "assets/**/*", "*.md"]
 ### `bins`
 
 - **Type**: `Array<BinConfig>`
-- **Default**: Auto-discovered if not specified
+- **Default**: Auto-derived if not specified
 
 List of binary configurations to build. The created binary will be placed in the `$PREFIX/bin` dir and will be in the path after running `pixi install` assuming the package is listed as a dependency as in the example above. `pixi build` will create a conda package that includes the binary.
 
-**Auto-discovery behavior:**
+**Auto-derive behavior:**
 - If `bins` is not specified, pixi-build-mojo will search for a `main.mojo` or `main.🔥` file in the project root
 - If found, it creates a binary with the name set to the project name
+- If a pkg has been manually configured, a bin will not be auto-derived and must be manually configured.
 
 #### `bins[].name`
 
@@ -220,7 +224,7 @@ The name of the binary executable to create. If not specified:
 #### `bins[].path`
 
 - **Type**: `String` (path)
-- **Default**: Auto-discovered for the first binary
+- **Default**: Auto-derived for the first binary
 
 The path to the Mojo file that contains a `main` function. If not specified:
 - For the first binary, searches for `main.mojo` or `main.🔥` in the project root
@@ -246,17 +250,18 @@ extra-args = ["-I", "special-thing"]
 ### `pkg`
 
 - **Type**: `PkgConfig`
-- **Default**: Auto-discovered if not specified
+- **Default**: Auto-derived if not specified
 
 Package configuration for creating Mojo package. The created Mojo package will be placed in the `$PREFIX/lib/mojo` dir, which will make it discoverable to anything that depends on the package.
 
-**Auto-discovery behavior:**
+**Auto-derive behavior:**
 - If `pkg` is not specified, pixi-build-mojo will search for a directory containing `__init__.mojo` or `__init__.🔥` in the following order:
   1. `<project_root>/<project_name>/`
   2. `<project_root>/src/`
 - If found, it creates a package with the name set to the project name
 - If no valid package directory is found, no package is built
-- If a binary is also auto-discovered, a pkg will not be generateda and must be manually specified
+- If a binary is manually configured, a pkg will not be auto-derived and must be manually specified.
+- If a binary is also auto-derive, a pkg will not be generated and must be manually specified
 
 #### `pkg.name`
 
@@ -273,7 +278,7 @@ name = "greetings"
 #### `pkg.path`
 
 - **Type**: `String` (path)
-- **Default**: Auto-discovered
+- **Default**: Auto-derive
 
 The path to the directory that constitutes the package. If not specified, searches for a directory with `__init__.mojo` or `__init__.🔥` as described above.
 
