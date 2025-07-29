@@ -42,8 +42,8 @@ impl BackendConfig for MojoBackendConfig {
     /// - debug_dir: Not allowed to have target specific value
     /// - extra_input_globs: Platform-specific completely replaces base
     /// - bins: Any bins with matching not-None names will be merged,
-    ///         Any set-settings on the platform specific pkg override base
-    ///         Any bins found only in target_config will be kept
+    ///   Any set-settings on the platform specific pkg override base
+    ///   Any bins found only in target_config will be kept
     /// - pkg: Any set-settings on the platform specific pkg override base
     fn merge_with_target_config(&self, target_config: &Self) -> miette::Result<Self> {
         if target_config.debug_dir.is_some() {
@@ -70,7 +70,7 @@ impl BackendConfig for MojoBackendConfig {
                 // Both base and target have binaries configured
                 // Override base with anything found in both target and base.
                 // If something is found only in base, drop it.
-                // If somethign is found only in target, drop it.
+                // If something is found only in target, drop it.
                 let base_bins: HashMap<_, _> = self
                     .bins
                     .as_ref()
@@ -135,16 +135,16 @@ impl MojoBackendConfig {
     /// - If both a `pkg` and `bin` have been auto-derived, only keep the `bin`
     pub fn auto_derive(
         &self,
-        manifest_root: &PathBuf,
+        manifest_root: &Path,
         project_name: &str,
     ) -> miette::Result<(Option<Vec<MojoBinConfig>>, Option<MojoPkgConfig>)> {
         // Update bins configs
         let (mut bins, bin_autodetected) =
-            MojoBinConfig::auto_derive(self.bins.as_ref(), &manifest_root, &project_name)?;
+            MojoBinConfig::auto_derive(self.bins.as_ref(), manifest_root, project_name)?;
 
         // Update pkg config
         let (mut pkg, pkg_autodetected) =
-            MojoPkgConfig::auto_derive(self.pkg.as_ref(), &manifest_root, &project_name)?;
+            MojoPkgConfig::auto_derive(self.pkg.as_ref(), manifest_root, project_name)?;
 
         // Make sure we have at least one of the two
         if bins.is_none() && pkg.is_none() {
@@ -192,12 +192,12 @@ pub struct MojoBinConfig {
 impl MojoBinConfig {
     /// Fill in any missing info and or try to find our default options.
     ///
-    /// - If None, try to find a `main.mojo` file in manfiest_root
+    /// - If None, try to find a `main.mojo` file in manifest_root
     /// - If any, for the first one, see if name or path need to be filled in
     /// - If any, verify that there are no name collisions
     pub fn auto_derive(
         conf: Option<&Vec<Self>>,
-        manifest_root: &PathBuf,
+        manifest_root: &Path,
         project_name: &str,
     ) -> miette::Result<(Option<Vec<Self>>, bool)> {
         let main = Self::find_main(manifest_root).map(|p| p.display().to_string());
@@ -264,7 +264,7 @@ impl MojoBinConfig {
 
     /// Try to find main.mojo in:
     /// - <manifest_root>/main.mojo
-    fn find_main(root: &PathBuf) -> Option<PathBuf> {
+    fn find_main(root: &Path) -> Option<PathBuf> {
         let mut path = root.join("main");
         for ext in ["mojo", "🔥"] {
             path.set_extension(ext);
@@ -339,7 +339,7 @@ impl MojoPkgConfig {
     /// - If Some, see if name or path need to be filled in.
     pub fn auto_derive(
         conf: Option<&Self>,
-        manifest_root: &PathBuf,
+        manifest_root: &Path,
         package_name: &str,
     ) -> miette::Result<(Option<Self>, bool)> {
         if let Some(conf) = conf {
@@ -384,7 +384,7 @@ impl MojoPkgConfig {
     /// - src
     ///
     /// and returns the first one found.
-    fn find_init_parent(root: &PathBuf, project_name: &str) -> Option<PathBuf> {
+    fn find_init_parent(root: &Path, project_name: &str) -> Option<PathBuf> {
         for dir in [project_name, "src"] {
             let mut path = root.join(dir).join("__init__");
             for ext in ["mojo", "🔥"] {

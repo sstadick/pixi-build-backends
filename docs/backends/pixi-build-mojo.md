@@ -15,7 +15,7 @@ The `pixi-build-mojo` backend is designed for building Mojo projects. It provide
 
 This backend automatically generates conda packages from Mojo projects.
 
-The generated packages can be installed into local envs for devlopment, or packaged for distribution.
+The generated packages can be installed into local envs for development, or packaged for distribution.
 
 ### Auto-derive of pkg and bin
 

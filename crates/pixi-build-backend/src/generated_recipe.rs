@@ -5,7 +5,7 @@ use std::{
 };
 
 use pixi_build_types::ProjectModelV1;
-use rattler_build::{recipe::variable::Variable, NormalizedKey};
+use rattler_build::{NormalizedKey, recipe::variable::Variable};
 use rattler_conda_types::Platform;
 use recipe_stage0::recipe::{ConditionalList, IntermediateRecipe, Item, Package, Source, Value};
 use serde::de::DeserializeOwned;
@@ -82,7 +82,7 @@ pub trait BackendConfig: DeserializeOwned + Clone {
     fn merge_with_target_config(&self, target_config: &Self) -> miette::Result<Self>;
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct GeneratedRecipe {
     pub recipe: IntermediateRecipe,
     pub metadata_input_globs: BTreeSet<String>,
