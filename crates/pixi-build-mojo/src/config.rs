@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -9,7 +9,7 @@ use pixi_build_backend::generated_recipe::BackendConfig;
 use serde::{Deserialize, Serialize};
 
 /// Top level config struct for the Mojo backend.
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct MojoBackendConfig {
     /// Environment Variables
@@ -33,6 +33,93 @@ pub struct MojoBackendConfig {
 impl BackendConfig for MojoBackendConfig {
     fn debug_dir(&self) -> Option<&Path> {
         self.debug_dir.as_deref()
+    }
+
+    /// Merge this configuration with a target-specific configuration.
+    /// Target-specific values override base values using the following rules:
+    ///
+    /// - env: Platform env vars override base, others merge
+    /// - debug_dir: Not allowed to have target specific value
+    /// - extra_input_globs: Platform-specific completely replaces base
+    /// - bins: Any bins with matching not-None names will be merged,
+    ///         Any set-settings on the platform specific pkg override base
+    ///         Any bins found only in target_config will be kept
+    /// - pkg: Any set-settings on the platform specific pkg override base
+    fn merge_with_target_config(&self, target_config: &Self) -> miette::Result<Self> {
+        if target_config.debug_dir.is_some() {
+            miette::bail!("`debug_dir` cannot have a target specific value");
+        }
+
+        let pkg = if target_config.pkg.is_some() {
+            if self.pkg.is_some() {
+                Some(
+                    self.pkg
+                        .as_ref()
+                        .unwrap()
+                        .merge_with_target_config(target_config.pkg.as_ref().unwrap())?,
+                )
+            } else {
+                target_config.pkg.clone()
+            }
+        } else {
+            self.pkg.clone()
+        };
+
+        let bins = if target_config.bins.is_some() {
+            if self.bins.is_some() {
+                // Both base and target have binaries configured
+                // Override base with anything found in both target and base.
+                // If something is found only in base, drop it.
+                // If somethign is found only in target, drop it.
+                let base_bins: HashMap<_, _> = self
+                    .bins
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .filter(|p| p.name.is_some())
+                    .map(|p| (p.name.clone().unwrap(), p.clone()))
+                    .collect();
+
+                Some(
+                    target_config
+                        .bins
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .map(|p| match p.name.as_ref() {
+                            Some(name) => {
+                                if let Some(base_bin) = base_bins.get(name) {
+                                    base_bin.merge_with_target_config(p)
+                                } else {
+                                    Ok(p.clone())
+                                }
+                            }
+                            None => Ok(p.clone()),
+                        })
+                        .collect::<miette::Result<_>>()?,
+                )
+            } else {
+                target_config.bins.clone()
+            }
+        } else {
+            self.bins.clone()
+        };
+
+        Ok(Self {
+            env: {
+                let mut merged_env = self.env.clone();
+                merged_env.extend(target_config.env.clone());
+                merged_env
+            },
+            debug_dir: self.debug_dir.clone(),
+            extra_input_globs: if target_config.extra_input_globs.is_empty() {
+                self.extra_input_globs.clone()
+            } else {
+                target_config.extra_input_globs.clone()
+            },
+            bins,
+            pkg,
+        })
     }
 }
 
@@ -187,6 +274,39 @@ impl MojoBinConfig {
         }
         None
     }
+
+    /// Merge with a target-specific configuration.
+    ///
+    /// All target-settings that are not None will override base.
+    ///
+    /// **Note** bins must have the same name to be merged.
+    fn merge_with_target_config(&self, target_config: &Self) -> miette::Result<Self> {
+        if self.name.is_some() && target_config.name.is_some() {
+            if self.name.as_ref().unwrap() != target_config.name.as_ref().unwrap() {
+                miette::bail!("Both bins must have a set name to be merged");
+            }
+        } else {
+            miette::bail!("Both bins must have a set name to be merged");
+        }
+
+        let path = if target_config.path.is_some() {
+            target_config.path.clone()
+        } else {
+            self.path.clone()
+        };
+
+        let extra_args = if target_config.extra_args.is_some() {
+            target_config.extra_args.clone()
+        } else {
+            self.extra_args.clone()
+        };
+
+        Ok(Self {
+            name: self.name.clone(),
+            path,
+            extra_args,
+        })
+    }
 }
 
 /// Config object for a Mojo package.
@@ -275,6 +395,35 @@ impl MojoPkgConfig {
             }
         }
         None
+    }
+
+    /// Merge with a target-specific configuration.
+    ///
+    /// All target-settings that are not None will override base.
+    fn merge_with_target_config(&self, target_config: &Self) -> miette::Result<Self> {
+        let name = if target_config.name.is_some() {
+            target_config.name.clone()
+        } else {
+            self.name.clone()
+        };
+
+        let path = if target_config.path.is_some() {
+            target_config.path.clone()
+        } else {
+            self.path.clone()
+        };
+
+        let extra_args = if target_config.extra_args.is_some() {
+            target_config.extra_args.clone()
+        } else {
+            self.extra_args.clone()
+        };
+
+        Ok(Self {
+            name,
+            path,
+            extra_args,
+        })
     }
 }
 

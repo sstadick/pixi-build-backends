@@ -4,16 +4,17 @@ mod config;
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::Path,
+    sync::Arc,
 };
 
 use build_script::BuildScriptContext;
-use config::{clean_project_name, MojoBackendConfig};
+use config::{MojoBackendConfig, clean_project_name};
 use miette::{Error, IntoDiagnostic};
 use pixi_build_backend::{
     generated_recipe::{GenerateRecipe, GeneratedRecipe, PythonParams},
     intermediate_backend::IntermediateBackendInstantiator,
 };
-use rattler_build::{recipe::variable::Variable, NormalizedKey};
+use rattler_build::{NormalizedKey, recipe::variable::Variable};
 use rattler_conda_types::{PackageName, Platform};
 use recipe_stage0::recipe::Script;
 
@@ -109,8 +110,10 @@ impl MojoGenerator {
 
 #[tokio::main]
 pub async fn main() {
-    if let Err(err) =
-        pixi_build_backend::cli::main(IntermediateBackendInstantiator::<MojoGenerator>::new).await
+    if let Err(err) = pixi_build_backend::cli::main(|log| {
+        IntermediateBackendInstantiator::<MojoGenerator>::new(log, Arc::default())
+    })
+    .await
     {
         eprintln!("{err:?}");
         std::process::exit(1);
