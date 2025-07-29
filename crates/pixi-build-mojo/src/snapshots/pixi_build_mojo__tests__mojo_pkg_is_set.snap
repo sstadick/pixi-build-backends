@@ -14,15 +14,11 @@ build:
   script:
     content:
       - mojo --version
-      - ""
-      - ""
       - "\t"
       - "\t\tmojo build -i . ./main.mojo -o $PREFIX/bin/example"
-      - "\t\t"
       - "\t"
       - ""
       - "\tmojo package -i . mylib -o $PREFIX/lib/mojo/lib.mojopkg"
-      - "\t"
     env: {}
     secrets: []
 requirements:

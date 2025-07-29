@@ -159,18 +159,6 @@ Environment variables to set during the build process.
 env = { ASSERT = "all" }
 ```
 
-#### `dist-dir`
-
-- **Type**: `String` (path)
-- **Default**: Not set
-
-A directory to create relative to the manifest pixi.toml to copy build artifacts into. `pixi install` will install the artifacts into your local enviroment and as such the `dist-dir` is mostly for debugging.
-
-```toml
-[package.build.configuration]
-dist-dir = "./target"
-```
-
 #### `debug-dir`
 
 - **Type**: `String` (path)
@@ -188,7 +176,7 @@ debug-dir = ".build-debug"
 - **Type**: `Array<String>`
 - **Default**: `[]`
 
-Additional globs to pass to pixi for including more than just mojo files in the build.
+Additional globs to pass to pixi to discover if the package should be rebuilt.
 
 ```toml
 [package.build.configuration]

@@ -14,11 +14,8 @@ build:
   script:
     content:
       - mojo --version
-      - ""
-      - ""
       - "\t"
       - "\t\tmojo build -I . ./main.mojo -o $PREFIX/bin/example"
-      - "\t\t"
       - "\t"
     env: {}
     secrets: []

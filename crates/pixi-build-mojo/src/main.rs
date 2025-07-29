@@ -7,13 +7,13 @@ use std::{
 };
 
 use build_script::BuildScriptContext;
-use config::{MojoBackendConfig, clean_project_name};
+use config::{clean_project_name, MojoBackendConfig};
 use miette::{Error, IntoDiagnostic};
 use pixi_build_backend::{
     generated_recipe::{GenerateRecipe, GeneratedRecipe, PythonParams},
     intermediate_backend::IntermediateBackendInstantiator,
 };
-use rattler_build::{NormalizedKey, recipe::variable::Variable};
+use rattler_build::{recipe::variable::Variable, NormalizedKey};
 use rattler_conda_types::{PackageName, Platform};
 use recipe_stage0::recipe::Script;
 
@@ -65,7 +65,6 @@ impl GenerateRecipe for MojoGenerator {
 
         let build_script = BuildScriptContext {
             source_dir: manifest_root.display().to_string(),
-            dist: config.dist_dir.clone().map(|d| d.display().to_string()),
             bins,
             pkg,
         }

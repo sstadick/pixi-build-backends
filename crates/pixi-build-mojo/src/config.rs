@@ -16,11 +16,6 @@ pub struct MojoBackendConfig {
     #[serde(default)]
     pub env: IndexMap<String, String>,
 
-    /// Directory that will be created to place output artifacts.
-    ///
-    /// This is releative to the manifest dir.
-    pub dist_dir: Option<PathBuf>,
-
     /// Dir that can be specified for outputting pixi debug state.
     pub debug_dir: Option<PathBuf>,
 
