@@ -578,8 +578,7 @@ impl Protocol for RattlerBuildBackend {
                     run_build(
                         output_with_build_string,
                         tool_config,
-                        // WorkingDirectoryBehavior::Preserve is blocked by
-                        // https://github.com/prefix-dev/rattler-build/issues/1825
+                        // rattler-build requires a clean work dir
                         WorkingDirectoryBehavior::Cleanup,
                     )
                     .await
@@ -718,8 +717,7 @@ impl Protocol for RattlerBuildBackend {
         };
 
         let (output, output_path) =
-            // WorkingDirectoryBehavior::Preserve is blocked by
-            // https://github.com/prefix-dev/rattler-build/issues/1825
+            // rattler-build requires a clean work dir
             run_build(output, &tool_config, WorkingDirectoryBehavior::Cleanup).await?;
 
         Ok(CondaBuildV1Result {
