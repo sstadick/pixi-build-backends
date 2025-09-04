@@ -100,11 +100,12 @@ impl GenerateRecipe for CMakeGenerator {
     }
 
     fn extract_input_globs_from_build(
+        &self,
         config: &Self::Config,
         _workdir: impl AsRef<Path>,
         _editable: bool,
-    ) -> BTreeSet<String> {
-        [
+    ) -> miette::Result<BTreeSet<String>> {
+        Ok([
             // Source files
             "**/*.{c,cc,cxx,cpp,h,hpp,hxx}",
             // CMake files
@@ -114,7 +115,7 @@ impl GenerateRecipe for CMakeGenerator {
         .iter()
         .map(|s: &&str| s.to_string())
         .chain(config.extra_input_globs.clone())
-        .collect()
+        .collect())
     }
 
     fn default_variants(&self, host_platform: Platform) -> BTreeMap<NormalizedKey, Vec<Variable>> {
@@ -166,7 +167,9 @@ mod tests {
             ..Default::default()
         };
 
-        let result = CMakeGenerator::extract_input_globs_from_build(&config, PathBuf::new(), false);
+        let generator = CMakeGenerator::default();
+
+        let result = generator.extract_input_globs_from_build(&config, PathBuf::new(), false);
 
         insta::assert_debug_snapshot!(result);
     }

@@ -65,11 +65,12 @@ pub trait GenerateRecipe {
     /// For example, this could be a list of source files or configuration files
     /// used by Cmake.
     fn extract_input_globs_from_build(
+        &self,
         _config: &Self::Config,
         _workdir: impl AsRef<Path>,
         _editable: bool,
-    ) -> BTreeSet<String> {
-        BTreeSet::new()
+    ) -> miette::Result<BTreeSet<String>> {
+        Ok(BTreeSet::new())
     }
 
     /// Returns "default" variants for the given host platform. This allows

@@ -213,10 +213,11 @@ impl GenerateRecipe for PythonGenerator {
     ///
     /// However, lets take everything in the directory as input for now
     fn extract_input_globs_from_build(
+        &self,
         config: &Self::Config,
         _workdir: impl AsRef<Path>,
         editable: bool,
-    ) -> BTreeSet<String> {
+    ) -> miette::Result<BTreeSet<String>> {
         let base_globs = Vec::from([
             // Source files
             "**/*.c",
@@ -254,12 +255,12 @@ impl GenerateRecipe for PythonGenerator {
             Vec::from(["**/*.py", "**/*.pyx"])
         };
 
-        base_globs
+        Ok(base_globs
             .iter()
             .chain(python_globs.iter())
             .map(|s| s.to_string())
             .chain(config.extra_input_globs.clone())
-            .collect()
+            .collect())
     }
 }
 
@@ -289,8 +290,9 @@ mod tests {
             ..Default::default()
         };
 
-        let result =
-            PythonGenerator::extract_input_globs_from_build(&config, PathBuf::new(), false);
+        let generator = PythonGenerator::default();
+
+        let result = generator.extract_input_globs_from_build(&config, PathBuf::new(), false);
 
         insta::assert_debug_snapshot!(result);
     }
@@ -302,7 +304,8 @@ mod tests {
             ..Default::default()
         };
 
-        let result = PythonGenerator::extract_input_globs_from_build(&config, PathBuf::new(), true);
+        let generator = PythonGenerator::default();
+        let result = generator.extract_input_globs_from_build(&config, PathBuf::new(), true);
 
         insta::assert_debug_snapshot!(result);
     }

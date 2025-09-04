@@ -63,9 +63,9 @@ class ROSGenerator(GenerateRecipeProtocol):
         config: Dict[str, Any],
         manifest_path: str,
         host_platform: Platform,
-        python_params: Optional[PythonParams] = None,
+        _python_params: Optional[PythonParams] = None,
     ) -> GeneratedRecipe:
-        """Generate a recipe for a Python package."""
+        """Generate a recipe for a Python package."""        
         backend_config: ROSBackendConfig = ROSBackendConfig(**config)
 
         manifest_root = Path(manifest_path)
@@ -140,7 +140,7 @@ class ROSGenerator(GenerateRecipeProtocol):
         # assert generated_recipe.recipe.build.script.content == build_script_lines, f"Script content {generated_recipe.recipe.build.script.content}, build script lines {build_script_lines}"
         return generated_recipe
 
-    def extract_input_globs_from_build(self, config: ROSBackendConfig, editable: bool) -> List[str]:
+    def extract_input_globs_from_build(self, config: ROSBackendConfig, workdir: Path, editable: bool) -> List[str]:
         """Extract input globs for the build."""
         return get_build_input_globs(config, editable)
 
