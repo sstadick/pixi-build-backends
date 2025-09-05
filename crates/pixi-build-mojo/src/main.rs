@@ -10,15 +10,11 @@ use pixi_build_backend::{
     generated_recipe::{GenerateRecipe, GeneratedRecipe, PythonParams},
     intermediate_backend::IntermediateBackendInstantiator,
 };
-use rattler_build::{NormalizedKey, recipe::variable::Variable};
+use rattler_build::NormalizedKey;
 use rattler_conda_types::{PackageName, Platform};
 use recipe_stage0::recipe::{ConditionalRequirements, Script};
 use std::collections::HashSet;
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::BTreeSet, path::Path, sync::Arc};
 
 #[derive(Default, Clone)]
 pub struct MojoGenerator {}
@@ -31,7 +27,7 @@ impl GenerateRecipe for MojoGenerator {
         model: &pixi_build_types::ProjectModelV1,
         config: &Self::Config,
         manifest_root: std::path::PathBuf,
-        host_platform: rattler_conda_types::Platform,
+        host_platform: Platform,
         _python_params: Option<PythonParams>,
         variants: &HashSet<NormalizedKey>,
     ) -> miette::Result<GeneratedRecipe> {
@@ -125,10 +121,6 @@ impl GenerateRecipe for MojoGenerator {
         Ok(Self::globs()
             .chain(config.extra_input_globs.clone())
             .collect())
-    }
-
-    fn default_variants(&self, _host_platform: Platform) -> BTreeMap<NormalizedKey, Vec<Variable>> {
-        BTreeMap::new()
     }
 }
 
