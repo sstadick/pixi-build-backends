@@ -25,4 +25,10 @@ if "%errorlevel%" == "0" (
         --install-scripts=%LIBRARY_PREFIX%\bin
 )
 
+:: Cleanup build artifacts
+for /d %%d in (*.egg-info) do rmdir /s /q "%%d" 2>nul
+if exist build rmdir /s /q build 2>nul
+if exist files.txt del /q files.txt 2>nul
+
+
 if errorlevel 1 exit 1
