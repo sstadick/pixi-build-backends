@@ -46,9 +46,10 @@ fi;
 
 # Needed for qt-gui-cpp ..
 if [[ $target_platform =~ linux.* ]]; then
-  ln -s $GCC ${BUILD_PREFIX}/bin/gcc
-  ln -s $GXX ${BUILD_PREFIX}/bin/g++
+  ln --symbolic --force $GCC ${BUILD_PREFIX}/bin/gcc
+  ln --symbolic --force $GXX ${BUILD_PREFIX}/bin/g++
 fi;
+
 
 # PYTHON_INSTALL_DIR should be a relative path, see
 # https://github.com/ament/ament_cmake/blob/2.3.2/ament_cmake_python/README.md
