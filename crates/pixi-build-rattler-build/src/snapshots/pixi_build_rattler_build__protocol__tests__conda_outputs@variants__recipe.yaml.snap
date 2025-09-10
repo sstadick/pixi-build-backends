@@ -100,6 +100,7 @@ input_file: tests/recipe/variants/recipe.yaml
     }
   ],
   "inputGlobs": [
+    "recipe.yaml",
     "variants.yaml"
   ]
 }

@@ -450,9 +450,15 @@ impl Protocol for RattlerBuildBackend {
             });
         }
 
+        let mut input_globs = variant_config.input_globs;
+        input_globs.extend(get_metadata_input_globs(
+            &self.manifest_root,
+            &self.recipe_source.path,
+        )?);
+
         Ok(CondaOutputsResult {
             outputs,
-            input_globs: variant_config.input_globs,
+            input_globs,
         })
     }
 
