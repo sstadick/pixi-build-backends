@@ -25,9 +25,13 @@ requirements:
     - pixi-build-api-version >=2,<3
 
 build:
+  number: 1
   script:
     - pip install . -vv --no-build-isolation
   noarch: python
+  python:
+    entry_points:
+      - pixi-build-ros = pixi_build_ros.main:main
 
 tests:
   - script: ${{ name }} --help
