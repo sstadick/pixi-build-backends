@@ -75,7 +75,7 @@ draco:
 eigen:
   robostack: [eigen]
 emacs:
-  # Wait until https://github.com/conda-forge/gtk3-feedstock/pull/74 is resolved
+  # Wait until https://github.com/robostack-forge/gtk3-feedstock/pull/74 is resolved
   # and emacs is rebuilt for harfbuzz=10
   #   robostack: [emacs]
   robostack: []
