@@ -1,7 +1,7 @@
 import os
 from itertools import chain
 from pathlib import Path
-from typing import Any, List, Dict
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import yaml
 from catkin_pkg.package import Package as CatkinPackage, parse_package_string
@@ -13,6 +13,38 @@ from pixi_build_ros.distro import Distro
 
 
 PackageMapEntry = Dict[str, List[str] | Dict[str, List[str]]]
+
+
+class PackageMappingSource:
+    """Describes where additional package mapping data comes from."""
+
+    def __init__(self, mapping: Dict[str, PackageMapEntry]):
+        if mapping is None:
+            raise ValueError("PackageMappingSource mapping cannot be null.")
+        if not isinstance(mapping, dict):
+            raise TypeError("PackageMappingSource mapping must be a dictionary.")
+        # Copy to keep the source immutable for callers.
+        self.mapping: Dict[str, PackageMapEntry] = dict(mapping)
+
+    @classmethod
+    def from_mapping(cls, mapping: Dict[str, PackageMapEntry]) -> "PackageMappingSource":
+        """Create a source directly from a mapping dictionary."""
+        return cls(mapping)
+
+    @classmethod
+    def from_file(cls, file_path: Union[str, Path]) -> "PackageMappingSource":
+        """Create a source from a mapping file."""
+        path = Path(file_path)
+        if not path.exists():
+            raise ValueError(f"Additional package map file '{path}' not found.")
+        with open(path, "r") as f:
+            data = yaml.safe_load(f) or {}
+        if not isinstance(data, dict):
+            raise TypeError("Expected package map file to contain a dictionary.")
+        return cls(data)
+
+    def get_package_mapping(self) -> Dict[str, PackageMapEntry]:
+        return dict(self.mapping)
 
 
 def get_build_input_globs(config: Any, editable: bool) -> List[str]:
@@ -70,15 +102,12 @@ def convert_package_xml_to_catkin_package(package_xml_content: str) -> CatkinPac
     return package_xml
 
 
-def load_package_map_data(package_map_path: List[Path]) -> Dict[str, PackageMapEntry]:
-    """Load the package map data from the given path."""
-    result = {}
-    for path in package_map_path:
-        if not path.exists():
-            raise ValueError(f"Additional package map path '{path}' not found.")
-        # this blindly overwrites the data, but that's ok for now'
-        with open(path, "r") as f:
-            result.update(yaml.safe_load(f))
+def load_package_map_data(package_map_sources: List[PackageMappingSource]) -> Dict[str, PackageMapEntry]:
+    """Load and merge package map data from files and inline mappings."""
+
+    result: Dict[str, PackageMapEntry] = {}
+    for source in reversed(package_map_sources):
+        result.update(source.get_package_mapping())
     return result
 
 

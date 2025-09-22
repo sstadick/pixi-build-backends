@@ -28,6 +28,7 @@ from .utils import (
     convert_package_xml_to_catkin_package,
     get_package_xml_content,
     load_package_map_data,
+    PackageMappingSource,
 )
 
 
@@ -43,7 +44,7 @@ def _parse_str_as_abs_path(value: str | Path, manifest_root: Path) -> Path:
     return value
 
 
-class ROSBackendConfig(pydantic.BaseModel, extra="forbid"):
+class ROSBackendConfig(pydantic.BaseModel, extra="forbid", arbitrary_types_allowed=True):
     """ROS backend configuration."""
 
     noarch: Optional[bool] = None
@@ -58,7 +59,9 @@ class ROSBackendConfig(pydantic.BaseModel, extra="forbid"):
     distro: Optional[str] = None
 
     # Extra package mappings to use in the build
-    extra_package_mappings: List[Path] = pydantic.Field(default_factory=list, alias="extra-package-mappings")
+    extra_package_mappings: List[PackageMappingSource] = pydantic.Field(
+        default_factory=list, alias="extra-package-mappings"
+    )
 
     def is_noarch(self) -> bool:
         """Whether to build a noarch package or a platform-specific package."""
@@ -77,18 +80,40 @@ class ROSBackendConfig(pydantic.BaseModel, extra="forbid"):
 
     @pydantic.field_validator("extra_package_mappings", mode="before")
     @classmethod
-    def _parse_package_mappings(cls, input_value, info: pydantic.ValidationInfo) -> Optional[List[Path]]:
+    def _parse_package_mappings(
+        cls, input_value, info: pydantic.ValidationInfo
+    ) -> Optional[List[PackageMappingSource]]:
         """Parse additional package mappings if set."""
         if input_value is None:
             return []
+
         base_path = Path(os.getcwd())
         if info.context and "manifest_root" in info.context:
             base_path = Path(info.context["manifest_root"])
 
-        res = []
-        for path_value in input_value:
-            res.append(_parse_str_as_abs_path(path_value, base_path))
-        return res
+        result: List[PackageMappingSource] = []
+        for raw_entry in input_value:
+            # match for cases
+            # it's already a package mapping source (usually for testing)
+            if isinstance(raw_entry, PackageMappingSource):
+                entry = raw_entry
+            elif isinstance(raw_entry, dict):
+                if "file" in raw_entry:
+                    file_value = raw_entry["file"]
+                    entry = PackageMappingSource.from_file(_parse_str_as_abs_path(file_value, base_path))
+                elif "mapping" in raw_entry:
+                    mapping_value = raw_entry["mapping"]
+                    entry = PackageMappingSource.from_mapping(mapping_value)
+                else:
+                    entry = PackageMappingSource.from_mapping(raw_entry)
+            elif isinstance(raw_entry, str | Path):
+                entry = PackageMappingSource.from_file(_parse_str_as_abs_path(raw_entry, base_path))
+            else:
+                raise ValueError(
+                    f"Unrecognized entry for extra-package-mappings: {raw_entry} of type {type(raw_entry)}."
+                )
+            result.append(entry)
+        return result
 
 
 class ROSGenerator(GenerateRecipeProtocol):
@@ -131,7 +156,9 @@ class ROSGenerator(GenerateRecipeProtocol):
         if not robostack_file.is_file():
             robostack_file = Path(__file__).parent.parent.parent / "robostack.yaml"
 
-        package_map_data = load_package_map_data([robostack_file] + backend_config.extra_package_mappings)
+        package_map_data = load_package_map_data(
+            backend_config.extra_package_mappings + [PackageMappingSource.from_file(robostack_file)]
+        )
 
         # Get requirements from package.xml
         package_requirements = package_xml_to_conda_requirements(package_xml, distro, host_platform, package_map_data)
