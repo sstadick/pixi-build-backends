@@ -1,5 +1,8 @@
-from pathlib import Path
+import json
+import shutil
 import tempfile
+import tomllib
+from pathlib import Path
 from typing import Dict
 
 from pixi_build_ros.distro import Distro
@@ -142,6 +145,56 @@ def test_generate_recipe(package_xmls: Path):
             assert expected_dep in run_deps, (
                 f"Expected runtime dependency {expected_dep} not found in run deps: {run_deps}"
             )
+
+
+def test_recipe_includes_project_run_dependency(package_xmls: Path):
+    """Ensure dependencies declared in project manifest merge into run requirements."""
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+
+        package_xml_source = package_xmls / "custom_ros.xml"
+        package_xml_dest = temp_path / "package.xml"
+        package_xml_dest.write_text(package_xml_source.read_text(encoding="utf-8"))
+
+        model_payload = {
+            "name": "custom_ros",
+            "version": "0.0.1",
+            "description": "Demo",
+            "authors": ["Tester the Tester"],
+            "targets": {
+                "defaultTarget": {
+                    "hostDependencies": {},
+                    "buildDependencies": {},
+                    "runDependencies": {
+                        "rich": {
+                            "binary": {
+                                "version": ">=10.0"
+                            }
+                        }
+                    },
+                },
+                "targets": {},
+            },
+        }
+        model = ProjectModelV1.from_json(json.dumps(model_payload))
+
+        config = {"distro": "noetic", "noarch": False}
+        host_platform = Platform.current()
+        generator = ROSGenerator()
+
+        generated_recipe = generator.generate_recipe(
+            model=model,
+            config=config,
+            manifest_path=str(temp_path),
+            host_platform=host_platform,
+        )
+
+        run_requirements = [str(dep) for dep in generated_recipe.recipe.requirements.run]
+
+        assert any("rich" in dep for dep in run_requirements), (
+            f"Expected pixi run dependency 'rich' missing from recipe run requirements"
+        )
 
 
 def test_robostack_target_platform_linux(package_map: Dict[str, PackageMapEntry]):
