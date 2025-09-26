@@ -1,9 +1,7 @@
 import os
 from itertools import chain
 from pathlib import Path
-from typing import Any
 
-import yaml
 from catkin_pkg.package import Package as CatkinPackage, parse_package_string
 
 from pixi_build_backend.types.intermediate_recipe import ConditionalRequirements
@@ -11,43 +9,11 @@ from pixi_build_backend.types.item import ItemPackageDependency
 from pixi_build_backend.types.platform import Platform
 from pixi_build_ros.distro import Distro
 
-
-PackageMapEntry = dict[str, list[str] | dict[str, list[str]]]
-
-
-class PackageMappingSource:
-    """Describes where additional package mapping data comes from."""
-
-    def __init__(self, mapping: dict[str, PackageMapEntry]):
-        if mapping is None:
-            raise ValueError("PackageMappingSource mapping cannot be null.")
-        if not isinstance(mapping, dict):
-            raise TypeError("PackageMappingSource mapping must be a dictionary.")
-        # Copy to keep the source immutable for callers.
-        self.mapping: dict[str, PackageMapEntry] = dict(mapping)
-
-    @classmethod
-    def from_mapping(cls, mapping: dict[str, PackageMapEntry]) -> "PackageMappingSource":
-        """Create a source directly from a mapping dictionary."""
-        return cls(mapping)
-
-    @classmethod
-    def from_file(cls, file_path: str | Path) -> "PackageMappingSource":
-        """Create a source from a mapping file."""
-        path = Path(file_path)
-        if not path.exists():
-            raise ValueError(f"Additional package map file '{path}' not found.")
-        with open(path) as f:
-            data = yaml.safe_load(f) or {}
-        if not isinstance(data, dict):
-            raise TypeError("Expected package map file to contain a dictionary.")
-        return cls(data)
-
-    def get_package_mapping(self) -> dict[str, PackageMapEntry]:
-        return dict(self.mapping)
+from .config import PackageMapEntry, PackageMappingSource, ROSBackendConfig
 
 
-def get_build_input_globs(config: Any, editable: bool) -> list[str]:
+# Any in here means ROSBackendConfig
+def get_build_input_globs(config: ROSBackendConfig, editable: bool) -> list[str]:
     """Get build input globs for ROS package."""
     base_globs = [
         # Source files
@@ -74,7 +40,7 @@ def get_build_input_globs(config: Any, editable: bool) -> list[str]:
     python_globs = [] if editable else ["**/*.py", "**/*.pyx"]
 
     all_globs = base_globs + python_globs
-    if hasattr(config, "extra_input_globs"):
+    if hasattr(config, "extra_input_globs") and config.extra_input_globs is not None:
         all_globs.extend(config.extra_input_globs)
 
     return all_globs

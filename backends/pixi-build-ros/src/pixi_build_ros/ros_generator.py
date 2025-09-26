@@ -3,8 +3,6 @@ Python generator implementation using Python bindings.
 """
 
 from pathlib import Path
-import os
-import pydantic
 from importlib.resources import files
 
 from typing import Any
@@ -28,93 +26,8 @@ from .utils import (
     convert_package_xml_to_catkin_package,
     get_package_xml_content,
     load_package_map_data,
-    PackageMappingSource,
 )
-
-
-def _parse_str_as_abs_path(value: str | Path, manifest_root: Path) -> Path:
-    """Parse a string as a Path."""
-    # Ensure the debug directory is a Path object
-    if isinstance(value, str):
-        value = Path(value)
-    # Ensure it's an absolute path
-    if not value.is_absolute():
-        # Convert to absolute path relative to manifest root
-        return (manifest_root / value).resolve()
-    return value
-
-
-class ROSBackendConfig(pydantic.BaseModel, extra="forbid", arbitrary_types_allowed=True):
-    """ROS backend configuration."""
-
-    # TODO: This should be figured out in some other way, not from the config.
-    distro: str
-
-    noarch: bool | None = None
-    # Environment variables to set during the build
-    env: dict[str, str] | None = None
-    # Directory for debug files of this script
-    debug_dir: Path | None = pydantic.Field(default=None, alias="debug-dir")
-    # Extra input globs to include in the build hash
-    extra_input_globs: list[str] | None = pydantic.Field(default=None, alias="extra-input-globs")
-    # ROS distribution to use, e.g., "foxy", "galactic", "humble"
-
-    # Extra package mappings to use in the build
-    extra_package_mappings: list[PackageMappingSource] = pydantic.Field(
-        default_factory=list, alias="extra-package-mappings"
-    )
-
-    def is_noarch(self) -> bool:
-        """Whether to build a noarch package or a platform-specific package."""
-        return self.noarch is None or self.noarch
-
-    @pydantic.field_validator("debug_dir", mode="before")
-    @classmethod
-    def _parse_debug_dir(cls, value: Any, info: pydantic.ValidationInfo) -> Path | None:
-        """Parse debug directory if set."""
-        if value is None:
-            return None
-        base_path = Path(os.getcwd())
-        if info.context and "manifest_root" in info.context:
-            base_path = Path(info.context["manifest_root"])
-        return _parse_str_as_abs_path(value, base_path)
-
-    @pydantic.field_validator("extra_package_mappings", mode="before")
-    @classmethod
-    def _parse_package_mappings(
-        cls, input_value: Any, info: pydantic.ValidationInfo
-    ) -> list[PackageMappingSource] | None:
-        """Parse additional package mappings if set."""
-        if input_value is None:
-            return []
-
-        base_path = Path(os.getcwd())
-        if info.context and "manifest_root" in info.context:
-            base_path = Path(info.context["manifest_root"])
-
-        result: list[PackageMappingSource] = []
-        for raw_entry in input_value:
-            # match for cases
-            # it's already a package mapping source (usually for testing)
-            if isinstance(raw_entry, PackageMappingSource):
-                entry = raw_entry
-            elif isinstance(raw_entry, dict):
-                if "file" in raw_entry:
-                    file_value = raw_entry["file"]
-                    entry = PackageMappingSource.from_file(_parse_str_as_abs_path(file_value, base_path))
-                elif "mapping" in raw_entry:
-                    mapping_value = raw_entry["mapping"]
-                    entry = PackageMappingSource.from_mapping(mapping_value)
-                else:
-                    entry = PackageMappingSource.from_mapping(raw_entry)
-            elif isinstance(raw_entry, str | Path):
-                entry = PackageMappingSource.from_file(_parse_str_as_abs_path(raw_entry, base_path))
-            else:
-                raise ValueError(
-                    f"Unrecognized entry for extra-package-mappings: {raw_entry} of type {type(raw_entry)}."
-                )
-            result.append(entry)
-        return result
+from .config import ROSBackendConfig, PackageMappingSource
 
 
 class ROSGenerator(GenerateRecipeProtocol):  # type: ignore[misc]  # MetadatProvider is not typed
@@ -223,9 +136,10 @@ class ROSGenerator(GenerateRecipeProtocol):  # type: ignore[misc]  # MetadatProv
         # assert generated_recipe.recipe.build.script.content == build_script_lines, f"Script content {generated_recipe.recipe.build.script.content}, build script lines {build_script_lines}"
         return generated_recipe
 
-    def extract_input_globs_from_build(self, config: ROSBackendConfig, workdir: Path, editable: bool) -> list[str]:
+    def extract_input_globs_from_build(self, config: dict[str, Any], workdir: Path, editable: bool) -> list[str]:
         """Extract input globs for the build."""
-        return get_build_input_globs(config, editable)
+        ros_config = ROSBackendConfig.model_validate(config)
+        return get_build_input_globs(ros_config, editable)
 
     def default_variants(self, host_platform: Platform) -> dict[str, Any]:
         """Get the default variants for the generator."""
