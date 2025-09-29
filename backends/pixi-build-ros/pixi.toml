@@ -8,6 +8,7 @@ preview = ["pixi-build"]
 
 [dependencies]
 pydantic = ">=2.8.2,<3"
+py_rattler = ">=0.15.0,<0.16"
 pixi-build-ros = { path = "." }
 
 [environments]
@@ -23,6 +24,7 @@ lint-mypy = "mypy"
 pixi-pycharm = ">=0.0.8,<0.1"
 pytest = "*"
 mypy = ">=1.18.2,<2"
+syrupy = ">=4.9.1,<5"
 types-pyyaml = "*"
 # You can skip this as it's a long build, uncomment this when developing only in this package
 #py-pixi-build-backend = "*"
@@ -55,6 +57,7 @@ python = ">=3.10"
 python = ">=3.10"
 rosdistro = "*"
 pydantic = ">=2.8.2,<3"
+py_rattler = ">=0.15.0,<0.16"
 catkin_pkg = "*"
 pyyaml = "*"
 pixi-build-api-version = ">=2,<3"
