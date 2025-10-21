@@ -14,7 +14,7 @@ use pixi_build_backend::{
     intermediate_backend::IntermediateBackendInstantiator,
 };
 use pixi_build_types::ProjectModelV1;
-use rattler_conda_types::Platform;
+use rattler_conda_types::{ChannelUrl, Platform};
 use recipe_stage0::{
     matchspec::PackageDependency,
     recipe::{ConditionalRequirements, Item, Script},
@@ -40,6 +40,7 @@ impl GenerateRecipe for RustGenerator {
         host_platform: Platform,
         _python_params: Option<PythonParams>,
         variants: &HashSet<NormalizedKey>,
+        _channels: Vec<ChannelUrl>,
     ) -> miette::Result<GeneratedRecipe> {
         // Construct a CargoMetadataProvider to read the Cargo.toml file
         // and extract metadata from it.
@@ -261,6 +262,7 @@ mod tests {
                 Platform::Linux64,
                 None,
                 &HashSet::new(),
+                vec![],
             )
             .expect("Failed to generate recipe");
 
@@ -303,6 +305,7 @@ mod tests {
                 Platform::Linux64,
                 None,
                 &HashSet::new(),
+                vec![],
             )
             .expect("Failed to generate recipe");
 
@@ -344,6 +347,7 @@ mod tests {
                 Platform::Linux64,
                 None,
                 &HashSet::new(),
+                vec![],
             )
             .expect("Failed to generate recipe");
 
@@ -388,6 +392,7 @@ mod tests {
                     Platform::Linux64,
                     None,
                     &HashSet::new(),
+                    vec![],
                 )
                 .expect("Failed to generate recipe")
         });
@@ -412,6 +417,7 @@ mod tests {
                 Platform::Linux64,
                 None,
                 &HashSet::new(),
+                vec![],
             )
             .expect("Failed to generate recipe");
 
@@ -508,6 +514,7 @@ mod tests {
             Platform::Linux64,
             None,
             &std::collections::HashSet::new(),
+            vec![],
         );
 
         // Should fail when trying to read Cargo.toml from non-existent path
@@ -535,6 +542,7 @@ mod tests {
             Platform::Linux64,
             None,
             &std::collections::HashSet::new(),
+            vec![],
         );
 
         assert!(result.is_err());
@@ -572,6 +580,7 @@ mod tests {
                 Platform::Linux64,
                 None,
                 &HashSet::new(),
+                vec![],
             )
             .expect("Failed to generate recipe");
 
@@ -637,6 +646,7 @@ mod tests {
                 Platform::Linux64,
                 None,
                 &HashSet::new(),
+                vec![],
             )
             .expect("Failed to generate recipe");
 

@@ -284,6 +284,7 @@ where
             params.host_platform,
             Some(PythonParams { editable: false }),
             &variant_config.variants.keys().cloned().collect(),
+            params.channels,
         )?;
 
         // Convert the recipe to source code.
@@ -542,6 +543,7 @@ where
                 editable: params.editable.unwrap_or_default(),
             }),
             &variants.keys().cloned().collect(),
+            params.channels,
         )?;
 
         // Convert the recipe to source code.
