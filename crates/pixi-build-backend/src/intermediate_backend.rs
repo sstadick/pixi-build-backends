@@ -34,9 +34,11 @@ use rattler_build::{
 use rattler_conda_types::{Platform, compression_level::CompressionLevel, package::ArchiveType};
 
 use serde::Deserialize;
+use tracing::warn;
 
 use crate::{
     TargetSelector,
+    consts::DEBUG_OUTPUT_DIR,
     dependencies::{
         convert_binary_dependencies, convert_dependencies, convert_input_variant_configuration,
     },
@@ -129,6 +131,13 @@ impl<T: GenerateRecipe> IntermediateBackend<T> {
             .into_diagnostic()
             .context("failed to parse configuration")?;
 
+        if let Some(path) = config.debug_dir() {
+            warn!(
+                path = %path.display(),
+                "`debug-dir` backend configuration is deprecated and ignored; debug data is now written to the build work directory."
+            );
+        }
+
         let target_config = target_config
             .into_iter()
             .map(|(target, config)| {
@@ -160,12 +169,6 @@ where
     T: GenerateRecipe + Clone + Send + Sync + 'static,
     T::Config: Send + Sync + 'static,
 {
-    fn debug_dir(configuration: Option<serde_json::Value>) -> Option<PathBuf> {
-        configuration
-            .and_then(|config| serde_json::from_value::<T::Config>(config).ok())
-            .and_then(|config| config.debug_dir().map(|d| d.to_path_buf()))
-    }
-
     async fn initialize(
         &self,
         params: InitializeParams,
@@ -217,10 +220,6 @@ where
     T: GenerateRecipe + Clone + Send + Sync + 'static,
     T::Config: BackendConfig + Send + Sync + 'static,
 {
-    fn debug_dir(&self) -> Option<&Path> {
-        self.config.debug_dir()
-    }
-
     async fn conda_outputs(
         &self,
         params: CondaOutputsParams,
@@ -369,18 +368,18 @@ where
             );
 
             // Save intermediate recipe and the used variant
-            // in the work dir by hash of the variant
-            // and entire variants.yaml at the root of work_dir
-            let work_dir = &directories.work_dir;
+            // in the debug dir by hash of the variant
+            // and entire variants.yaml at the root of debug_dir
+            let debug_dir = &directories.build_dir.join("debug");
 
-            let recipe_path = work_dir.join("recipe.yaml");
-            let variants_path = work_dir.join("variants.yaml");
+            let recipe_path = debug_dir.join("recipe.yaml");
+            let variants_path = debug_dir.join("variants.yaml");
 
-            let package_work_dir = work_dir.join("recipe").join(&hash.hash);
-            let package_recipe_path = package_work_dir.join("recipe.yaml");
-            let package_variant_path = package_work_dir.join("variants.yaml");
+            let package_debug_dir = debug_dir.join("recipe").join(&hash.hash);
+            let package_recipe_path = package_debug_dir.join("recipe.yaml");
+            let package_variant_path = package_debug_dir.join("variants.yaml");
 
-            tokio_fs::create_dir_all(&package_work_dir)
+            tokio_fs::create_dir_all(&package_debug_dir)
                 .await
                 .into_diagnostic()?;
 
@@ -398,7 +397,7 @@ where
                 .await
                 .into_diagnostic()?;
 
-            // write the entire variants.yaml at the root of work_dir
+            // write the entire variants.yaml at the root of debug_dir
             if !variants_saved {
                 let variants = serde_yaml::to_string(&variant_config)
                     .into_diagnostic()
@@ -619,21 +618,18 @@ where
         );
 
         // Save intermediate recipe and the used variant
-        // in the work dir by hash of the variant
+        // in the debug dir by hash of the variant
         let variant = discovered_output.used_vars;
 
         // Save intermediate recipe and the used variant
-        // in the work dir by hash of the variant
-        // and entire variants.yaml at the root of work_dir
-        let work_dir = &directories.work_dir;
+        // in the debug dir by hash of the variant
+        // and entire variants.yaml at the root of debug_dir
+        let debug_dir = &directories.build_dir.join(DEBUG_OUTPUT_DIR);
 
-        let recipe_path = work_dir.join("recipe.yaml");
-        let variants_path = work_dir.join("variants.yaml");
+        let recipe_path = debug_dir.join("recipe.yaml");
+        let variants_path = debug_dir.join("variants.yaml");
 
-        let package_dir = directories
-            .work_dir
-            .join("recipe")
-            .join(&discovered_output.hash.hash);
+        let package_dir = debug_dir.join("recipe").join(&discovered_output.hash.hash);
 
         let package_recipe_path = package_dir.join("recipe.yaml");
         let package_variant_path = package_dir.join("variants.yaml");
@@ -656,7 +652,7 @@ where
             .await
             .into_diagnostic()?;
 
-        // write the entire variants.yaml at the root of work_dir
+        // write the entire variants.yaml at the root of debug_dir
         let variants = serde_yaml::to_string(&variant_config)
             .into_diagnostic()
             .context("failed to serialize variant config to YAML")?;
