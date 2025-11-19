@@ -75,35 +75,7 @@ impl GenerateRecipe for MojoGenerator {
         // rattler-build selectors with simple string comparison.
         let model_dependencies = model.dependencies(Some(host_platform));
 
-        // Get the list of compilers from config, defaulting to ["mojo"] if not specified
-        let mut compilers = config
-            .compilers
-            .clone()
-            .unwrap_or_else(|| vec!["mojo".to_string()]);
-
-        // Handle mojo compiler specially if it's in the list
-        if let Some(idx) = compilers.iter().position(|name| name == "mojo") {
-            let mojo_compiler_pkg = "mojo-compiler";
-            // All of these packages also contain the mojo compiler and maintain backward compat.
-            // They should be removable at a future point.
-            let alt_names = ["max", "mojo", "modular"];
-
-            let mojo_pkg_name = pixi_build_types::SourcePackageName::from(mojo_compiler_pkg);
-            if !model_dependencies.build.contains_key(&mojo_pkg_name)
-                && !alt_names.iter().any(|alt| {
-                    model_dependencies
-                        .build
-                        .contains_key(&pixi_build_types::SourcePackageName::from(*alt))
-                })
-            {
-                requirements
-                    .build
-                    .push(mojo_compiler_pkg.parse().into_diagnostic()?);
-            }
-
-            // Remove the mojo compiler from the list of compilers.
-            compilers.swap_remove(idx);
-        }
+        let compilers = config.compilers.clone().unwrap_or_default();
 
         pixi_build_backend::compilers::add_compilers_to_requirements(
             &compilers,
