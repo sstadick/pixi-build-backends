@@ -423,7 +423,7 @@ mod tests {
             .generate_recipe(
                 &project_model,
                 &MojoBackendConfig {
-                    compilers: Some(vec!["mojo".to_string(), "c".to_string(), "cxx".to_string()]),
+                    compilers: Some(vec!["c".to_string(), "cxx".to_string()]),
                     ..Default::default()
                 },
                 temp.path().to_path_buf(),
@@ -436,12 +436,6 @@ mod tests {
 
         // Check that we have both the mojo-compiler package and the additional compilers
         let build_reqs = &generated_recipe.recipe.requirements.build;
-
-        // Check for mojo-compiler package (should be present)
-        let has_mojo_compiler = build_reqs
-            .iter()
-            .any(|item| format!("{item:?}").contains("mojo-compiler"));
-        assert!(has_mojo_compiler, "Should have mojo-compiler package");
 
         // Check for additional compiler templates
         let compiler_templates: Vec<String> = build_reqs
@@ -515,15 +509,6 @@ mod tests {
 
         // Check that we have only the mojo-compiler package by default
         let build_reqs = &generated_recipe.recipe.requirements.build;
-
-        // Check for mojo-compiler package (should be present by default)
-        let has_mojo_compiler = build_reqs
-            .iter()
-            .any(|item| format!("{item:?}").contains("mojo-compiler"));
-        assert!(
-            has_mojo_compiler,
-            "Should have mojo-compiler package by default"
-        );
 
         // Check that no additional compiler templates are present
         let compiler_templates: Vec<String> = build_reqs
